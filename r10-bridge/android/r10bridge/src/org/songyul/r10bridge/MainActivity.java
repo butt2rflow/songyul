@@ -62,7 +62,7 @@ public class MainActivity extends Activity implements BridgeService.Ui {
             // the old page stayed on screen (2026-11-13). A new install time makes a new URL; the server ignores the query.
             long ver = 0;
             try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime; } catch (Exception e) { }
-            final String url = "http://127.0.0.1:" + BridgeService.WS_PORT + "/?v=" + ver;
+            final String url = "http://127.0.0.1:" + BridgeService.WS_PORT + "/?v=" + ver + "&lang=" + BridgeStrings.language(this);
             v.postDelayed(() -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))), 400);
         });
         root.addView(page);

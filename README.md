@@ -47,7 +47,7 @@ Two IMUs track the hand and forearm. The onboard mic captures impact sound. The 
 **Pose from video** (for comparison with the glove).
 
 ![Pose frames through a swing](docs/images/pose-frames.png)
-![Swing curves from pose keypoints (Korean labels; English version will be re-plotted from the real pose output)](docs/images/pose-curves.png)
+![Shoulder turn, hip turn and head sway from video pose landmarks](docs/images/pose-curves.png)
 ![Simulated glove readings](docs/images/swing-sim.png)
 
 ## Phone page

@@ -24,6 +24,17 @@ python analysis/swing_eye.py --figure docs/images/swing-sim.png
 
 The swing simulation figure is generated directly from the synthetic sessions.
 
+Regenerate the pose figure from the repository root in a Python 3.12 virtual environment.
+
+```sh
+python -m pip install mediapipe==0.10.21 matplotlib
+pose_dir=$(mktemp -d)
+python analysis/pose_demo.py docs/images/pose-demo.mp4 "$pose_dir"
+cp "$pose_dir/pose-curves.png" docs/images/pose-curves.png
+```
+
+MediaPipe Pose runs its bundled full model on the frames of the AI-generated golfer video, which already has a pose overlay. The plot uses the newly detected landmarks. Add `--lang ko` and use a Korean-capable font such as Noto Sans CJK KR for Korean labels.
+
 For your own recordings:
 
 - `python analysis/swing_eye.py take.npz` reports swing metrics from an NPZ take.

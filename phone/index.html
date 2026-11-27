@@ -309,7 +309,10 @@ const GLOVE_HZ = 240;   // the glove firmware's rate (was a menu with 400 for PC
 
 const $ = (id) => document.getElementById(id);
 const savedLanguage = () => { try { return localStorage.getItem(LANGUAGE_KEY); } catch { return null; } };
-let language = pickLanguage(savedLanguage(), navigator.language);
+// The R10 Bridge app passes its own KO/EN choice as ?lang=; it wins over the page's saved choice.
+const urlLanguage = new URLSearchParams(location.search).get("lang");
+if (urlLanguage === "ko" || urlLanguage === "en") { try { localStorage.setItem(LANGUAGE_KEY, urlLanguage); } catch {} }
+let language = pickLanguage(urlLanguage === "ko" || urlLanguage === "en" ? urlLanguage : savedLanguage(), navigator.language);
 const t = (key, ...args) => text(key, language, ...args);
 const ko = (key) => text(key, "ko");
 const boundText = new Map();
