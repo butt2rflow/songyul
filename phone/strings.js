@@ -257,6 +257,7 @@ const strings = {
   dial: ["다이얼처럼 손목 돌리기", "Turn your wrist like a dial"],
   gestureDialFlow: ["{0} → 손목 돌리기 (조금 = 천천히, 많이 = 빠르게) → 네 번 톡톡", "{0} → turn your wrist (small turn: slow, large: fast) → tap four times"],
   changeClub: ["채 바꾸기", "Change club"],
+  tapFeedback: ["손등 탭 소리·진동", "Hand tap sound and vibration"],
   reverseDial: ["방향 반대로", "Reverse direction"],
   customGesture: ["직접 입력…", "Custom command…"],
   registerAgain: ["자세 다시 등록", "Re-register pose"],

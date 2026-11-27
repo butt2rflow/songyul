@@ -28,6 +28,17 @@
 
 export const GESTURES = ["tap2", "tap4", "hold", "twist", "shake", "dial"];
 export const SWING_FRAMES = 6;   // ~25 ms at 240 Hz: a real downswing stays over the limit for tens of ms, a knock for one sample
+export const TAP_THRESHOLDS = Object.freeze({
+  targetCount: 4,
+  accelJumpG: 1.2, lookbackMs: 5.5, handGyroDps: 800,
+  ringMs: 60, minGapMs: 100, maxGapMs: 450, timeoutMs: 500,
+  calmMs: 400, busyGyroDps: 150, busyAccelDeviationG: 0.35, cooldownMs: 1500,
+  swingHandDps: 800, swingHandWithArmDps: 1200, swingArmDps: 1000,
+  swingFrames: 1, clubModeSwingFrames: SWING_FRAMES, swingHoldoffMs: 2000,
+  diagnosticJumpG: 0.35, // observation floor only, to capture weak impulses without logging sensor noise
+});
+const tap = TAP_THRESHOLDS;
+const ms = (seconds) => +(seconds * 1000).toFixed(1);
 
 export class GestureDetector {
   constructor(onGesture, opts = {}) {
@@ -44,6 +55,10 @@ export class GestureDetector {
     this.dl = null; this.prevT = null; this.handLock = -Infinity; this.dialAxis = opts.dialAxis || null;   // dial in progress; swing lock from the hand IMU only
     this.dialLog = [];                              // last few dial checks, accepted or not, with the reason (for tuning on a real glove)
     this.onDialNote = opts.onDialNote || null;      // page hook: keep each check beyond this page's life
+    this.onTapCandidate = opts.onTapCandidate || null;
+    this.onTapSequence = opts.onTapSequence || null;
+    this.lastTapCandidate = null;
+    this.tapImpulse = null;
     this.mode = null;                               // club-change mode state, or null
   }
   startClubMode(t) { this.mode = { t0: t, ang: [0, 0, 0], th: 0, g0: null, glp: null, biasSum: [0, 0, 0], biasN: 0, lastStep: -Infinity, lastAny: -Infinity, on: false, wait: 0, lastAct: t }; this.dl = null; }
@@ -95,16 +110,21 @@ export class GestureDetector {
     const t = f[0], g = [f[1], f[2], f[3]], a = [f[4], f[5], f[6]];
     const gm = Math.hypot(...g), am = Math.hypot(...a);
     if (this.lastBusy === -Infinity) this.lastBusy = t;   // the stream's start doesn't count as calm
-    const armFast = this.armOk && Math.hypot(f[7], f[8], f[9]) > 1000;
+    const armFast = this.armOk && Math.hypot(f[7], f[8], f[9]) > tap.swingArmDps;
     // a swing = the hand stays fast for SWING_FRAMES samples in a row. One sample over the limit is a knock's jolt: a hard
     // tap read 1,347 deg/s for one sample (12.7 g) and closed club mode as a "swing" (2026-11-14).
     // Outside club mode one sample still locks (a desk bang otherwise let a false shake through in two old logs); in club
     // mode only tap4 counts, so there the lock waits for a real swing and the closing knocks aren't locked out.
-    this.fastN = gm > (this.armOk ? 1200 : 800) ? (this.fastN || 0) + 1 : 0;
-    if ((this.mode ? this.fastN >= SWING_FRAMES : this.fastN >= 1) || armFast) { this.lock = t + 2; this.cand = null; this.taps = []; }
+    this.fastN = gm > (this.armOk ? tap.swingHandWithArmDps : tap.swingHandDps) ? (this.fastN || 0) + 1 : 0;
+    if (this.fastN >= (this.mode ? tap.clubModeSwingFrames : tap.swingFrames) || armFast) {
+      this.lock = t + tap.swingHoldoffMs / 1000;
+      this.tapResult(this.cand?.taps, t, "after_swing_holdoff");
+      this.tapResult(this.taps, t, "after_swing_holdoff");
+      this.cand = null; this.taps = [];
+    }
     // the dial is a forearm roll, so the forearm IMU races past 400 deg/s on every dial; only the hand lock applies to it
     if (this.fastN >= 1) this.handLock = t + 2;   // dial (off now): unchanged
-    const busy = gm > 150 || Math.abs(am - 1) > 0.35;
+    const busy = gm > tap.busyGyroDps || Math.abs(am - 1) > tap.busyAccelDeviationG;
     const quietFor = t - this.lastBusy;               // calm time BEFORE this frame
     // gravity estimate (slow low-pass) for the shake check
     if (!this.lp) this.lp = a.slice(); else for (let k = 0; k < 3; k++) this.lp[k] += 0.02 * (a[k] - this.lp[k]);
@@ -143,6 +163,8 @@ export class GestureDetector {
             if (!this.dialAxis) { const big = u.reduce((m, x, k) => (Math.abs(x) > Math.abs(u[m]) ? k : m), 0); this.dialAxis = u.map((x) => x * Math.sign(u[big])); }
             const dot = u[0] * this.dialAxis[0] + u[1] * this.dialAxis[1] + u[2] * this.dialAxis[2], dir = dot >= 0 ? 1 : -1;
             const ax = this.dialAxis.map((x, k) => 0.8 * x + 0.2 * dir * u[k]), n = Math.hypot(...ax); this.dialAxis = ax.map((x) => x / n);
+            this.tapResult(this.cand?.taps, t, "other");
+            this.tapResult(this.taps, t, "other");
             this.cand = null; this.calmSince = null; this.gyroX = [null, null, null]; this.accX = [null, null, null]; this.taps = [];
             this.last = { name: "dial", t };
             this.on({ name: "dial", t, dir, deg: Math.round(dir * mag), steps: Math.max(1, Math.min(3, Math.floor((mag + 70) / 150))) });
@@ -154,35 +176,28 @@ export class GestureDetector {
 
     // a candidate waits for 0.4 s of calm, then fires; big motion meanwhile cancels it
     if (this.cand) {
-      if (!open) this.cand = null;
+      if (!open) {
+        this.tapResult(this.cand.taps, t, "other");
+        this.cand = null;
+      }
       else if (busy) this.calmSince = null;
       else if (this.calmSince === null) this.calmSince = t;
-      else if (t - this.calmSince >= 0.4) this.fire(this.cand.name, t);
+      else if (t - this.calmSince >= tap.calmMs / 1000) this.fire(this.cand.name, t);
     }
     if (busy) { if (quietFor > 0.05) { this.busyStart = t; this.preCalm = quietFor; } this.lastBusy = t; }
     const fromCalm = (t0) => this.preCalm >= 1.0 && t0 - this.busyStart < 0.6;   // began within 0.6 s of leaving >= 1 s of calm
     // a run of knocks ends 0.5 s after the last one: 2 = tap2, 4 = tap4 (in club-change mode only tap4 counts)
-    if (this.taps.length && t - this.taps[this.taps.length - 1] > 0.5) {
-      const n = this.taps.length; this.taps = [];
-      const name = n === 2 && this.tapsCalm ? "tap2" : n === 4 ? "tap4" : null;
-      if (name && this.enabled[name] && open && !this.cand && (!this.mode || name === "tap4")) { this.cand = { name, t }; this.calmSince = null; }
-    }
-    if (!open || this.cand) { this.gyroX = [null, null, null]; this.accX = [null, null, null]; return; }
-
-    // knocks (tap2 / tap4 are decided when the run ends, above)
-    if (this.enabled.tap2 || this.enabled.tap4) {
-      const old = this.hist.find((h) => h[0] >= t - 0.0055) || this.hist[0];
-      const jump = Math.max(...[4, 5, 6].map((j) => Math.abs(f[j] - old[j])));
-      if (jump > 1.2 && gm < 800) {   // 800 (was 400): knocks on a hand that is still turning showed 450-790 deg/s (2026-11-13)
-        const prev = this.taps[this.taps.length - 1];
-        if (!prev || t - prev > 0.06) {              // one knock rings for ~10-20 ms: count it once
-          if (prev && t - prev <= 0.45) { if (t - prev >= 0.10) this.taps.push(t); }
-          else { this.taps = [t]; this.tapsCalm = fromCalm(t) || !!this.mode; }   // tap2 needs the run to start out of >= 1 s of calm;
-          // tap4 doesn't: the hand is usually still moving up when the knocking starts (2026-11-13: 0.1-0.3 s of calm), and
-          // four even knocks are rare by accident (none in any real log)
-        }
+    if (this.taps.length && t - this.taps[this.taps.length - 1] > tap.timeoutMs / 1000) {
+      const taps = this.taps;
+      this.taps = [];
+      const name = taps.length === 2 && this.tapsCalm ? "tap2" : taps.length === tap.targetCount ? "tap4" : null;
+      if (name && this.enabled[name] && open && !this.cand && (!this.mode || name === "tap4")) {
+        this.cand = { name, t, taps: name === "tap4" ? taps : null }; this.calmSince = null;
       }
+      if (this.cand?.taps !== taps) this.tapResult(taps, t, "timeout");
     }
+    if (this.enabled.tap2 || this.enabled.tap4) this.checkTap(f, gm, open, fromCalm);
+    if (!open || this.cand) { this.gyroX = [null, null, null]; this.accX = [null, null, null]; return; }
     if (this.mode) return;                            // in club-change mode nothing else is recognised
     // shake: gravity-removed accel alternating past +-1.5 g
     if (this.enabled.shake) {
@@ -218,6 +233,59 @@ export class GestureDetector {
       } else this.holdSince = null;
     }
   }
+  checkTap(f, gm, open, fromCalm) {
+    if ((!open || this.cand) && !this.onTapCandidate) return;
+    const t = f[0];
+    const old = this.hist.find((h) => h[0] >= t - tap.lookbackMs / 1000) || this.hist[0];
+    const jump = Math.max(Math.abs(f[4] - old[4]), Math.abs(f[5] - old[5]), Math.abs(f[6] - old[6]));
+    if (!(jump > tap.diagnosticJumpG)) {
+      if (this.tapImpulse && !this.tapImpulse.strong) this.noteTap(this.tapImpulse.peak, "too_weak");
+      this.tapImpulse = null;
+      return;
+    }
+    if (jump <= tap.accelJumpG) {
+      if (this.onTapCandidate && !this.tapImpulse?.strong && (!this.tapImpulse || jump > this.tapImpulse.peak.jump)) {
+        this.tapImpulse = { peak: { t, jump, gm, count: this.taps.length }, strong: false };
+      }
+      return;
+    }
+    const prev = this.taps[this.taps.length - 1];
+    const gap = t - prev;
+    let reason = null, counted = false;
+    if (t < this.lock) reason = "after_swing_holdoff";
+    else if (!(gm < tap.handGyroDps)) reason = "motion";
+    else if (!open || this.cand) reason = "other";
+    else if (prev && (gap <= tap.ringMs / 1000 || gap < tap.minGapMs / 1000)) reason = "too_fast";
+    else {
+      if (prev && gap <= tap.maxGapMs / 1000) this.taps.push(t);
+      else {
+        if (prev) {
+          reason = "too_slow";
+          this.tapResult(this.taps, t, reason);
+        }
+        this.taps = [t];
+        this.tapsCalm = fromCalm(t) || !!this.mode; // only tap2 needs calm before the first knock
+      }
+      counted = true;
+    }
+    if (this.onTapCandidate) {
+      // Keep the first strong decision in each impulse, and always report a count.
+      if (counted || !this.tapImpulse?.strong) {
+        this.noteTap({ t, jump, gm, count: this.taps.length }, reason, counted);
+      }
+      this.tapImpulse = { strong: true };
+    }
+  }
+  noteTap({ t, jump, gm, count }, rejectReason, counted = false) {
+    const gapMs = this.lastTapCandidate === null ? null : ms(t - this.lastTapCandidate);
+    this.lastTapCandidate = t;
+    this.onTapCandidate(t, { peak: +jump.toFixed(3), handGyroDps: +gm.toFixed(1), gapMs, countAfter: count, rejectReason }, counted);
+  }
+  tapResult(taps, t, outcome) {
+    if (taps?.length && this.enabled.tap4) {
+      this.onTapSequence?.(t, { countReached: taps.length, durationMs: ms(t - taps[0]), outcome });
+    }
+  }
   dialNote(d, why, dur = null, straight = null) {
     this.dialLog.push({ why, ang: d.ang.map((x) => Math.round(x)), mag: Math.round(Math.hypot(...d.ang)), peak: Math.round(d.peak),
       dur: dur === null ? null : +dur.toFixed(2), straight: straight === null ? null : +straight.toFixed(2), accDev: +d.accDev.toFixed(2) });
@@ -225,7 +293,9 @@ export class GestureDetector {
     if (this.onDialNote) this.onDialNote(this.dialLog[this.dialLog.length - 1]);
   }
   fire(name, t) {
-    this.cand = null; this.calmSince = null; this.cool = t + 1.5; this.last = { name, t };
+    this.tapResult(this.cand?.taps, t, name === "tap4" ? "completed" : "other");
+    this.tapResult(this.taps, t, "other");
+    this.cand = null; this.calmSince = null; this.cool = t + tap.cooldownMs / 1000; this.last = { name, t };
     this.gyroX = [null, null, null]; this.accX = [null, null, null]; this.taps = [];
     this.on({ name, t });
   }
