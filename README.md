@@ -72,7 +72,7 @@ The glove is the data collector. Next: label real swings with launch-monitor res
 
 ## Range setup
 
-![Range setup from above: phone on a tripod in front of the golfer, Garmin R10 about 2 m behind the ball](docs/images/setup-topview.png)
+![Range setup from above: phone on a floor-level mini tripod in front of the golfer, Garmin R10 about 2 m behind the ball](docs/images/setup-topview.png)
 
 ## Quick start
 
