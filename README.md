@@ -2,7 +2,7 @@
 
 a sensor glove that reads your golf swing
 
-<p align="center"><img src="docs/images/glove-worn-top.png" width="360" alt="Songyul worn on the right hand: controller on the back of the hand, IMU strap on the forearm"></p>
+![Songyul: the glove electronics next to real data from one swing, hand and forearm rotation and the impact sound from the glove mic](docs/images/hero.png)
 
 **Name.** *Son* means hand and *gyul* means grain or texture.  
 **Status.** Early, changes often. Photos show the v1 hardware; the v3 case layout is in `cad/`.
