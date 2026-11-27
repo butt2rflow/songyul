@@ -19,8 +19,23 @@ import java.util.List;
  * We ACK each; after a shot we send Disarm, ShotComplete, Arm; every 10 s a Ping once the last was answered.
  */
 class E6Server {
+    static final class Status {
+        static final Status WAITING = new Status("e6Waiting", R.string.e6_waiting);
+        static final Status ERROR = new Status("e6Error", R.string.e6_error);
+        static final Status CONNECTED = new Status("garminConnected", R.string.garmin_connected);
+        static final Status DISCONNECTED = new Status("garminDisconnected", R.string.garmin_disconnected);
+
+        final String code;
+        final int message;
+
+        private Status(String code, int message) {
+            this.code = code;
+            this.message = message;
+        }
+    }
+
     interface Listener {
-        void onStatus(String text);
+        void onStatus(Status status, String detail);
         void onShot(JSONObject shot);
         void onRaw(String direction, String message);
     }
@@ -62,14 +77,14 @@ class E6Server {
             server = new ServerSocket();
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(port));
-            listener.onStatus("E6 수신 대기 중 (포트 " + port + ")");
+            listener.onStatus(Status.WAITING, Integer.toString(port));
             while (running) {
                 Socket s = server.accept();
                 sessions.add(s);
                 new Thread(() -> { try { new Session(this, s).run(); } finally { sessions.remove(s); } }, "e6-session").start();
             }
         } catch (Exception e) {
-            if (running) listener.onStatus("E6 수신기 오류: " + e.getMessage());
+            if (running) listener.onStatus(Status.ERROR, String.valueOf(e.getMessage()));
         }
     }
 
@@ -136,7 +151,7 @@ class E6Server {
 
         void run() {
             String peer = String.valueOf(sock.getRemoteSocketAddress());
-            listener.onStatus("Garmin 앱 연결됨 " + peer);
+            listener.onStatus(Status.CONNECTED, peer);
             Thread pinger = new Thread(() -> {
                 while (open) {
                     try { Thread.sleep(10000); } catch (InterruptedException e) { return; }
@@ -166,7 +181,7 @@ class E6Server {
                 open = false;
                 pinger.interrupt();
                 try { sock.close(); } catch (Exception ignored) { }
-                listener.onStatus("Garmin 앱 연결 끊김 " + peer);
+                if (owner.running) listener.onStatus(Status.DISCONNECTED, peer);
             }
         }
 

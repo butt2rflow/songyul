@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>스윙 카메라 + 센서 장갑</title>
+<title data-i18n="title"></title>
 <meta name="robots" content="noindex">
 <style>
 :root { --bg: #0f1214; --panel: #1a1f23; --fg: #eef1f3; --muted: #9aa5ad; --accent: #4fc3f7; --ok: #66bb6a; --warn: #ffb74d; color-scheme: dark; }
@@ -58,9 +58,11 @@ a { color: var(--accent); }
 .key { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; color: var(--fg); }
 .live { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: clamp(11px, 3.2vw, 14px); table-layout: fixed; }
 .live col.part { width: 5.5em; }
+html[lang="en"] .live col.part { width: 7em; }
 .live th { color: var(--muted); font-weight: 400; font-size: 0.85em; text-align: right; padding: 2px 2px; white-space: nowrap; }
 .live td { text-align: right; padding: 3px 2px; border-top: 1px solid #2d353b; white-space: nowrap; overflow: hidden; }
 .live td:first-child, .live th:first-child { text-align: left; }
+html[lang="en"] .live td:first-child .key { white-space: normal; }
 .key i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .sw { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: clamp(11px, 3.2vw, 14px); table-layout: fixed; }
 .sw th { color: var(--muted); font-weight: 400; font-size: 0.85em; text-align: right; padding: 2px; white-space: normal; line-height: 1.2; }
@@ -71,6 +73,7 @@ a { color: var(--accent); }
 #lastShot .num { padding: 5px 7px; border-left: 3px solid #4fc3f7; }
 #lastShot .num.r10 { border-left-color: #81c784; } #lastShot .num.body { border-left-color: #ffb74d; }
 #lastShot .num span { font-size: 11px; } #lastShot .num b { font-size: clamp(16px, 4.6vw, 22px); }
+html[lang="en"] #lastShot .num span { white-space: normal; }
 #lastShot .num small { font-size: 11px; min-height: 0; }
 .lskey { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 4px; }
 .lskey span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; background: #4fc3f7; }
@@ -118,6 +121,13 @@ body.recording #recDot { display: inline-block; }
   backface-visibility: hidden; transition: opacity .4s ease, background .3s, border-color .3s, box-shadow .3s; }
 #clubWheel .ci.sel { background: #4fc3f7; color: #002433; border-color: #b3e5fc; box-shadow: 0 0 34px rgba(79,195,247,.85); }
 #clubWheel .cw-name { margin-top: 18px; font-size: 40px; font-weight: 800; color: #fff; text-shadow: 0 2px 18px rgba(79,195,247,.9); }
+.language { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.language button { padding: 3px 9px; font-size: 12px; }
+#vHeard { overflow-wrap: anywhere; }
+html[lang="en"] :is(#swTitle, #clipTitle, #impTitle, #gLast) { white-space: normal; }
+html[lang="en"] #gLast { text-align: right; }
+html[lang="en"] #swingBox col:last-child { width: 3.8em; }
+html[lang="en"] #swRows td:last-child { white-space: normal; }
 details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--muted);cursor:pointer}
 </style>
 </head>
@@ -125,21 +135,21 @@ details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--mut
 <div class="wrap">
 <div id="dockRim" aria-hidden="true"></div>
 <div id="clubWheel" aria-hidden="true"><div class="cw-stage"><div class="cw-ring" id="cwRing"></div></div><div class="cw-name" id="cwName"></div></div>
-<button id="dockTab" aria-label="메뉴 열기">▾ 메뉴<span id="recDot"></span></button>
+<button id="dockTab" data-i18n-aria="menuOpen"><span data-i18n="menuTab"></span><span id="recDot"></span></button>
 
   <div class="dock" id="dock">
   <div class="row">
-    <button id="start" class="primary">카메라 시작</button>
-    <button id="base" disabled>어드레스 기준 잡기</button>
-    <button id="rec" disabled>녹화</button>
-    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="speak" type="checkbox" checked style="display:inline">음성 안내</label>
-    <label class="file">영상 파일로 시험<input id="file" type="file" accept="video/*"></label>
+    <button id="start" class="primary" data-i18n="cameraStart"></button>
+    <button id="base" disabled data-i18n="address"></button>
+    <button id="rec" disabled data-i18n="recordVideo"></button>
+    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="speak" type="checkbox" checked style="display:inline"><span data-i18n="voiceGuidance"></span></label>
+    <label class="file"><span data-i18n="testVideo"></span><input id="file" type="file" accept="video/*"></label>
   </div>
   <div class="row">
-    <button id="glove">센서 장갑 연결</button>
-    <button id="log" disabled>기록 시작</button>
-    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="r10On" type="checkbox" style="display:inline">R10 결과 받기</label>
-    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="r10Speak" type="checkbox" style="display:inline">결과 말하기</label>
+    <button id="glove" data-i18n="connectGlove"></button>
+    <button id="log" disabled data-i18n="startLog"></button>
+    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="r10On" type="checkbox" style="display:inline"><span data-i18n="r10Receive"></span></label>
+    <label class="file" style="display:flex;align-items:center;gap:6px"><input id="r10Speak" type="checkbox" style="display:inline"><span data-i18n="r10Speak"></span></label>
   </div>
   </div>
   <div id="msg"></div>
@@ -147,137 +157,142 @@ details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--mut
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
     <canvas id="canvas"></canvas>
-    <div class="hud"><span class="chip" id="fps">준비</span><span class="chip" id="vis"></span></div>
+    <div class="hud"><span class="chip" id="fps" data-i18n="ready"></span><span class="chip" id="vis"></span></div>
     <div id="swOv" aria-hidden="true"><div id="swOvTitle"></div><div class="row4" id="swOvRow"></div></div>
     <div id="impOv" aria-hidden="true">
-      <figure><canvas id="ovSnd"></canvas><figcaption id="ovSndCap">타격음</figcaption></figure>
-      <figure><canvas id="ovVib"></canvas><figcaption id="ovVibCap">타격 진동</figcaption></figure>
+      <figure><canvas id="ovSnd"></canvas><figcaption id="ovSndCap" data-i18n="impactSound"></figcaption></figure>
+      <figure><canvas id="ovVib"></canvas><figcaption id="ovVibCap" data-i18n="impactVibration"></figcaption></figure>
     </div>
   </div>
 
   <!-- results: the last swing and what the ball did, in one place -->
   <div class="chart" id="lastShot">
-    <div class="head"><span id="lsTitle" style="font-size:15px;color:var(--fg)">마지막 스윙: 아직 없어요</span><span id="lsPair" style="font-size:13px"></span></div>
+    <div class="head"><span id="lsTitle" style="font-size:15px;color:var(--fg)" data-i18n="lastSwingEmpty"></span><span id="lsPair" style="font-size:13px"></span></div>
     <div class="ls">
-      <div class="num"><span>템포</span><b id="lsTempo">–</b></div>
-      <div class="num"><span>손목 풀림 ms</span><b id="lsRelease">–</b></div>
-      <div class="num"><span>꺾임 °</span><b id="lsHinge">–</b></div>
-      <div class="num"><span>손 최고 °/s</span><b id="lsHand">–</b></div>
-      <div class="num r10"><span>볼 mph</span><b id="lsBall">–</b></div>
-      <div class="num r10"><span>출발 °</span><b id="lsDir">–</b></div>
-      <div class="num r10"><span>패스 °</span><b id="lsPath">–</b></div>
-      <div class="num r10"><span>페이스 °</span><b id="lsFace">–</b></div>
-      <div class="num body"><span>어깨 회전</span><b id="sh">–</b><small id="shMax"></small></div>
-      <div class="num body"><span>골반 회전</span><b id="hp">–</b><small id="hpMax"></small></div>
-      <div class="num body"><span>꼬임</span><b id="xf">–</b><small id="xfMax"></small></div>
-      <div class="num body"><span>머리 이동</span><b id="hd">–</b><small id="hdMax"></small></div>
+      <div class="num"><span data-i18n="tempo"></span><b id="lsTempo">–</b></div>
+      <div class="num"><span data-i18n="releaseMs"></span><b id="lsRelease">–</b></div>
+      <div class="num"><span data-i18n="hingeDeg"></span><b id="lsHinge">–</b></div>
+      <div class="num"><span data-i18n="handPeakRate"></span><b id="lsHand">–</b></div>
+      <div class="num r10"><span data-i18n="ballMph"></span><b id="lsBall">–</b></div>
+      <div class="num r10"><span data-i18n="launchDeg"></span><b id="lsDir">–</b></div>
+      <div class="num r10"><span data-i18n="pathDeg"></span><b id="lsPath">–</b></div>
+      <div class="num r10"><span data-i18n="faceDeg"></span><b id="lsFace">–</b></div>
+      <div class="num body"><span data-i18n="shoulderTurn"></span><b id="sh">–</b><small id="shMax"></small></div>
+      <div class="num body"><span data-i18n="hipTurn"></span><b id="hp">–</b><small id="hpMax"></small></div>
+      <div class="num body"><span data-i18n="xFactor"></span><b id="xf">–</b><small id="xfMax"></small></div>
+      <div class="num body"><span data-i18n="headSway"></span><b id="hd">–</b><small id="hdMax"></small></div>
     </div>
-    <div class="lskey"><span>장갑</span><span class="r10">R10</span><span class="body">카메라</span></div>
+    <div class="lskey"><span data-i18n="glove"></span><span class="r10" data-i18n="r10"></span><span class="body" data-i18n="camera"></span></div>
   </div>
   <div class="charts">
     <div class="chart" id="swingBox">
-      <div class="head"><span id="swTitle">스윙 분석 (스윙이 끝나면 한 줄씩 생겨요)</span><label style="display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--fg)"><input id="swSpeak" type="checkbox"> 스윙마다 말하기</label></div>
+      <div class="head"><span id="swTitle" data-i18n="swingWaiting"></span><label style="display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--fg)"><input id="swSpeak" type="checkbox"> <span data-i18n="readSwings"></span></label></div>
       <table class="sw">
         <colgroup><col style="width:2.6em"><col><col><col><col><col><col><col></colgroup>
-        <tr><th>#</th><th>템포</th><th>손목 풀림</th><th>꺾임</th><th>손 최고</th><th>R10 볼</th><th>R10 출발</th><th>기준</th></tr>
-        <tbody id="swRows"><tr><td colspan="8" style="text-align:left;color:var(--muted)">아직 스윙이 없어요</td></tr></tbody>
+        <tr><th>#</th><th data-i18n="tempo"></th><th data-i18n="release"></th><th data-i18n="hinge"></th><th data-i18n="handPeak"></th><th data-i18n="r10Ball"></th><th data-i18n="r10Launch"></th><th data-i18n="source"></th></tr>
+        <tbody id="swRows"><tr><td colspan="8" style="text-align:left;color:var(--muted)" data-i18n="noSwing"></td></tr></tbody>
       </table>
-      <details class="note"><summary>설명</summary><span id="swNote" style="white-space:normal;line-height:1.5;font-size:13px;color:var(--muted)">손 최고 속도 뒤 ! = 손 자이로가 한계(2293 °/s)에 닿음, 손목! = 손목(시계 자리) 자이로가 닿음. 템포 = 백스윙 시간 ÷ 다운스윙 시간. 손목 풀림 = 꺾인 손목이 반쯤 풀린 순간(− = 임팩트 전). 꺾임은 어드레스 기준 상대값이에요.</span></details>
+      <details class="note"><summary data-i18n="details"></summary><span id="swNote" style="white-space:normal;line-height:1.5;font-size:13px;color:var(--muted)" data-i18n="swingHelp"></span></details>
     </div>
   </div>
 
   <!-- glove status and raw signals -->
   <div class="nums" id="gnums">
-    <div class="num"><span>장갑 수신</span><b id="gHz">–</b><small id="gState">연결 안 됨</small></div>
-    <div class="num"><span>빠진 프레임</span><b id="gMiss">–</b><small id="gBatch"></small></div>
-    <div class="num"><span>손 / 팔 자이로 최대 (최근 3초)</span><b id="gGyro">–</b><small id="gSat"></small></div>
-    <div class="num"><span>배터리</span><b id="gBat">–</b><small id="gArm"></small></div>
-    <div class="num"><span>소리 클립</span><b id="gClips">0</b><small id="gLog"></small></div>
+    <div class="num"><span data-i18n="gloveRate"></span><b id="gHz">–</b><small id="gState" data-i18n="disconnected"></small></div>
+    <div class="num"><span data-i18n="dropped"></span><b id="gMiss">–</b><small id="gBatch"></small></div>
+    <div class="num"><span data-i18n="gyroPeak"></span><b id="gGyro">–</b><small id="gSat"></small></div>
+    <div class="num"><span data-i18n="battery"></span><b id="gBat">–</b><small id="gArm"></small></div>
+    <div class="num"><span data-i18n="audioClips"></span><b id="gClips">0</b><small id="gLog"></small></div>
   </div>
   <div class="charts">
     <div class="chart" id="r10Box">
-      <div class="head"><span>R10 샷 (최근 4개)</span><span id="r10State" style="font-size:13px">꺼짐</span></div>
+      <div class="head"><span data-i18n="r10Recent"></span><span id="r10State" style="font-size:13px" data-i18n="r10Off"></span></div>
       <table class="sw">
         <colgroup><col style="width:2.6em"><col><col><col><col><col><col></colgroup>
-        <tr><th>#</th><th>볼 (mph)</th><th>출발 (°)</th><th>스핀축 (°)</th><th>패스 (°)</th><th>페이스 (°)</th><th>짝 스윙</th></tr>
-        <tbody id="r10Rows"><tr><td colspan="7" style="text-align:left;color:var(--muted)">아직 R10 샷이 없어요</td></tr></tbody>
+        <tr><th>#</th><th data-i18n="ballMphTable"></th><th data-i18n="launchTable"></th><th data-i18n="spinAxisTable"></th><th data-i18n="pathTable"></th><th data-i18n="faceTable"></th><th data-i18n="pairedSwing"></th></tr>
+        <tbody id="r10Rows"><tr><td colspan="7" style="text-align:left;color:var(--muted)" data-i18n="noR10"></td></tr></tbody>
       </table>
-      <details class="note"><summary>설명</summary><span style="white-space:normal;line-height:1.5;font-size:13px;color:var(--muted)">R10 Bridge 앱에서 "수신 켜기", Garmin Golf 앱 Manage Connection은 127.0.0.1 : 2483 → 초록 체크 → Garmin 앱에서 세션 시작(안 하면 샷이 안 와요). 샷이 오면 그 직전 임팩트의 스윙과 짝지어요(짝 스윙 옆 숫자 = 임팩트에서 샷 도착까지 ms). + = 오른쪽/인아웃.</span></details>
+      <details class="note"><summary data-i18n="details"></summary><span style="white-space:normal;line-height:1.5;font-size:13px;color:var(--muted)" data-i18n="r10Help"></span></details>
     </div>
     <div class="chart">
-      <div class="head"><span id="impTitle">임팩트 순간 (임팩트 소리가 오면 그 순간의 카메라 화면과 ±1초 그래프가 나와요)</span></div>
+      <div class="head"><span id="impTitle" data-i18n="impactWaiting"></span></div>
       <canvas id="impImg" style="height:auto;aspect-ratio:3/4"></canvas>
       <canvas id="impCv"></canvas>
-      <div class="head"><span><span class="key"><i style="background:#4fc3f7"></i>손 회전</span><span class="key"><i style="background:#ffb74d"></i>팔뚝 회전</span><span class="key"><i style="background:#eef1f3"></i>카메라 오른손목 속도</span><span class="key"><i style="background:#ff4fa3"></i>손 833 Hz</span></span><span id="impNote"></span></div>
+      <div class="head"><span><span class="key"><i style="background:#4fc3f7"></i><span data-i18n="handRotation"></span></span><span class="key"><i style="background:#ffb74d"></i><span data-i18n="forearmRotation"></span></span><span class="key"><i style="background:#eef1f3"></i><span data-i18n="cameraWrist"></span></span><span class="key"><i style="background:#ff4fa3"></i><span data-i18n="handHighRate"></span></span></span><span id="impNote"></span></div>
     </div>
     <div class="chart">
-      <div class="head"><span>장갑 센서 지금 값 (자이로 °/s, 가속 g, 초당 5번)</span></div>
+      <div class="head"><span data-i18n="liveSensors"></span></div>
       <table class="live">
         <colgroup><col class="part"><col span="4"></colgroup>
-        <tr><th></th><th>x</th><th>y</th><th>z</th><th>크기</th></tr>
-        <tr><td><span class="key" style="margin:0"><i style="background:#4fc3f7"></i>손 자이로</span></td><td id="h0">–</td><td id="h1">–</td><td id="h2">–</td><td id="hG">–</td></tr>
-        <tr><td><span class="key" style="margin:0"><i style="background:#4fc3f7"></i>손 가속</span></td><td id="h3">–</td><td id="h4">–</td><td id="h5">–</td><td id="hA">–</td></tr>
-        <tr><td><span class="key" style="margin:0"><i style="background:#ffb74d"></i>팔 자이로</span></td><td id="a0">–</td><td id="a1">–</td><td id="a2">–</td><td id="aG">–</td></tr>
-        <tr><td><span class="key" style="margin:0"><i style="background:#ffb74d"></i>팔 가속</span></td><td id="a3">–</td><td id="a4">–</td><td id="a5">–</td><td id="aA">–</td></tr>
+        <tr><th></th><th>x</th><th>y</th><th>z</th><th data-i18n="magnitude"></th></tr>
+        <tr><td><span class="key" style="margin:0"><i style="background:#4fc3f7"></i><span data-i18n="handGyro"></span></span></td><td id="h0">–</td><td id="h1">–</td><td id="h2">–</td><td id="hG">–</td></tr>
+        <tr><td><span class="key" style="margin:0"><i style="background:#4fc3f7"></i><span data-i18n="handAccel"></span></span></td><td id="h3">–</td><td id="h4">–</td><td id="h5">–</td><td id="hA">–</td></tr>
+        <tr><td><span class="key" style="margin:0"><i style="background:#ffb74d"></i><span data-i18n="armGyro"></span></span></td><td id="a0">–</td><td id="a1">–</td><td id="a2">–</td><td id="aG">–</td></tr>
+        <tr><td><span class="key" style="margin:0"><i style="background:#ffb74d"></i><span data-i18n="armAccel"></span></span></td><td id="a3">–</td><td id="a4">–</td><td id="a5">–</td><td id="aA">–</td></tr>
       </table>
     </div>
     <div class="chart">
-      <div class="head"><span>장갑 회전 속도 (최근 5초, °/s)</span><span><span class="key"><i style="background:#4fc3f7"></i>손</span><span class="key"><i style="background:#ffb74d"></i>팔뚝</span></span></div>
+      <div class="head"><span data-i18n="gloveRotation"></span><span><span class="key"><i style="background:#4fc3f7"></i><span data-i18n="hand"></span></span><span class="key"><i style="background:#ffb74d"></i><span data-i18n="forearm"></span></span></span></div>
       <canvas id="gyroCv"></canvas>
     </div>
     <div class="chart">
-      <div class="head"><span>휴대폰 마이크 스펙트로그램 (실시간, 0~8 kHz)</span><button id="mic" style="padding:6px 10px;font-size:13px;white-space:nowrap;flex:none">마이크 켜기</button></div>
+      <div class="head"><span data-i18n="phoneSpectrogram"></span><button id="mic" style="padding:6px 10px;font-size:13px;white-space:nowrap;flex:none" data-i18n="micOn"></button></div>
       <canvas id="specCv"></canvas>
     </div>
     <div class="chart">
-      <div class="head"><span id="clipTitle">장갑 소리 클립 (임팩트·목소리가 오면 그려져요)</span></div>
+      <div class="head"><span id="clipTitle" data-i18n="clipWaiting"></span></div>
       <canvas id="clipCv"></canvas>
     </div>
   </div>
 
   <!-- settings -->
+  <div class="language" role="group" data-i18n-aria="language">
+    <span data-i18n="language"></span>
+    <button class="chip" data-language="ko" data-i18n="ko"></button>
+    <button class="chip" data-language="en" data-i18n="en"></button>
+  </div>
   <div class="chart" id="voiceBox">
-    <div class="head"><span>음성 명령</span><label style="display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--fg)"><input id="vCont" type="checkbox"> 계속 듣기</label></div>
-    <div class="row"><button id="vTalk">말로 하기</button><span id="vHeard" style="font-size:14px;color:var(--muted);align-self:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">예: "7번 하프", "굿샷", "플레이어 게스트", "방금 거 어때"</span></div>
+    <div class="head"><span data-i18n="voiceCommands"></span><label style="display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--fg)"><input id="vCont" type="checkbox"> <span data-i18n="keepListening"></span></label></div>
+    <div class="row"><button id="vTalk" data-i18n="talk"></button><span id="vHeard" style="font-size:14px;color:var(--muted);align-self:center;min-width:0;flex:1" data-i18n="voiceExamples"></span></div>
   </div>
   <div class="chart" id="gestBox">
-    <div class="head"><label style="display:flex;align-items:center;gap:8px;color:var(--fg);font-size:14px;cursor:pointer"><input id="gOn" type="checkbox"> 손짓 명령</label><span id="gLast" style="font-size:13px"></span></div>
+    <div class="head"><label style="display:flex;align-items:center;gap:8px;color:var(--fg);font-size:14px;cursor:pointer"><input id="gOn" type="checkbox"> <span data-i18n="gestureCommands"></span></label><span id="gLast" style="font-size:13px"></span></div>
     <div id="gBody" style="display:none">
       <table class="sw" id="gTable"><colgroup><col style="width:40%"><col></colgroup><tbody id="gRows"></tbody></table>
-      <div class="head"><span style="white-space:normal;line-height:1.5">손짓은 1초쯤 가만히 있다가 하고, 한 뒤에도 잠깐 멈추면 알아들어요. 스윙 중이나 직후 2초는 안 받아요. 명령은 음성 명령과 같은 문장이라 "직접 입력"으로 무엇이든 붙일 수 있어요.</span></div>
+      <div class="head"><span style="white-space:normal;line-height:1.5" data-i18n="gestHelp"></span></div>
     </div>
   </div>
   <div class="chart" id="quick">
-    <div class="head"><label style="display:flex;align-items:center;gap:8px;color:var(--fg);font-size:14px;cursor:pointer"><input id="qOn" type="checkbox"> 빠른 선택 (음성 명령 대신 눌러서)</label><button id="qEdit" style="padding:6px 10px;font-size:13px;flex:none;display:none">편집</button></div>
+    <div class="head"><label style="display:flex;align-items:center;gap:8px;color:var(--fg);font-size:14px;cursor:pointer"><input id="qOn" type="checkbox"> <span data-i18n="quickSelect"></span></label><button id="qEdit" style="padding:6px 10px;font-size:13px;flex:none;display:none" data-i18n="edit"></button></div>
     <div id="qBody" style="display:none">
-      <div id="nowSet">지금: –</div>
+      <div id="nowSet" data-i18n="quickEmpty"></div>
       <div class="chips" id="qChips"></div>
-      <div class="head"><span id="qLast">라벨은 가장 최근 임팩트에 붙어요</span></div>
+      <div class="head"><span id="qLast" data-i18n="labelsHelp"></span></div>
     </div>
   </div>
 
   <details>
-    <summary>쓰는 법</summary>
-    <p>카메라로 몸의 점 33개를 찾고, 블루투스로 센서 장갑(손·팔뚝 IMU)을 함께 받아요. "기록 시작"을 누르면 두 데이터에 휴대폰 시각을 붙여 한 파일에 저장해요. 시간 맞추기와 분석은 다음 단계예요. 영상은 휴대폰 밖으로 나가지 않아요.</p>
+    <summary data-i18n="help"></summary>
+    <p data-i18n="helpIntro"></p>
     <ul>
-      <li><b>카메라 위치:</b> 정면(얼굴 쪽)에서 2.5~3 m, 허리 높이, 휴대폰은 가로. 발부터 머리, 클럽 끝까지 화면에 다 들어오게 해요.</li>
-      <li><b>전면 카메라</b>만 써요. 치면서 화면을 볼 수 있게요. 갤럭시 S25에서는 넓게 찍히는 camera 1을 자동으로 고르고, 다른 휴대폰은 기본 전면 카메라를 써요. 화면은 거울처럼 좌우로 뒤집어 보여 주지만, 분석·녹화·기록 파일은 뒤집지 않아서 오른손잡이는 오른손잡이로 남아요. 빠른 동작(임팩트)은 장갑이 맡으니 카메라는 30 fps면 충분해요.</li>
-      <li>어드레스 자세에서 <b>"어드레스 기준 잡기"</b>를 누르면 그 자세를 0으로 두고, 스윙하는 동안 가장 큰 값을 작은 글씨로 보여 줘요. 다음 스윙 전에 다시 누르면 돼요.</li>
-      <li>회전은 화면에서 어깨선·골반선이 짧아진 정도로 계산한 <b>대략값</b>이에요. 다운스윙과 임팩트는 너무 빨라서 점이 튈 수 있어요. 정확한 손목과 임팩트는 센서 장갑이 맡아요.</li>
-      <li>녹화는 점이 그려진 화면을 휴대폰에 저장해요(webm).</li>
-      <li>자세 AI는 항상 정확한 모델(MediaPipe Pose full)을 써요. S25에서 약 26 fps, 손목 신뢰도 약 86%였어요(빠른 모델은 손목 신뢰도가 50% 아래라 뺐어요).</li>
-      <li><b>화면이 좁을 때:</b> 화면 비율은 4:3으로 고정이에요(센서 높이를 다 써서 위아래가 넓어요). 몸이 다 안 들어오면 휴대폰을 조금 더 멀리 두세요.</li>
-      <li><b>화면이 안 보일 때:</b> "음성 안내"를 켜 두면 카메라가 몸 전체를 보는지 소리로 알려 줘요("전신이 보여요", "발이 잘려요", "머리가 잘려요"). 휴대폰을 세워 두고 소리를 들으며 자리를 잡으면 돼요.</li>
-      <li><b>빠른 선택:</b> 체크하면 펼쳐지고, 평소에는 접혀 있어요. 음성 명령과 같은 일을 버튼으로 해요. 선수·클럽·스윙 종류를 고르면 그다음 임팩트부터 그 설정이 기록에 붙고, 결과 라벨(굿샷, 뒤땅…)은 가장 최근 임팩트에 붙어요. "편집"으로 버튼을 더하거나 지울 수 있고, 바꾼 목록은 이 휴대폰에 기억돼요.</li>
-      <li><b>그래프:</b> 장갑 회전 속도는 실시간이에요. 휴대폰 마이크 스펙트로그램은 "마이크 켜기"를 누르면 실시간으로 흘러요(가로 = 시간, 세로 = 소리 높낮이, 밝을수록 큰 소리). 장갑 마이크는 블루투스로 소리를 계속 보낼 수 없어서, 임팩트나 목소리 클립이 도착할 때마다(임팩트 뒤 약 1.5초) 아래 칸에 그려져요.</li>
-      <li><b>장갑 속도:</b> 휴대폰 블루투스로는 새 펌웨어(2026-10-25부터)가 약 250 Hz까지 고르게 보내요(S25 측정). 그래서 기본은 240 Hz예요. 400 Hz를 고르면 장갑이 보내지 못한 샘플을 건너뛰어 간격이 고르지 않아요. 옛 펌웨어는 180 Hz로 두세요.</li>
-      <li><b>센서 장갑:</b> 장갑 LED가 파랗게 깜빡일 때 "센서 장갑 연결" → 목록에서 SensorGlove 선택. 휴대폰 블루투스 설정에서 따로 페어링하지 마세요(연결을 잡고 있어서 장갑이 안 보여요). 안드로이드 Chrome에서 돼요. 아이폰 Safari는 웹 블루투스가 없어요.</li>
-      <li><b>기록:</b> "기록 시작" → 스윙 → "기록 멈추고 저장". 장갑 프레임(장갑 시계 + 휴대폰 도착 시각), 자세 프레임(휴대폰 시각), 배터리, 소리 클립이 json 파일 하나로 저장돼요. 카메라 없이 장갑만 기록해도 돼요.</li>
-      <li><b>음성 명령:</b> "말로 하기"를 누르고 말해요. "7번 하프"(클럽과 스윙 종류 함께), "굿샷"·"뒤땅"(방금 스윙 라벨), "플레이어 게스트", "친구 차례", "방금 거 어때", "오늘 요약", "배터리", "기록 시작"·"그만", "취소". 알아들은 걸 소리로 다시 말해 줘요. "계속 듣기"를 켜면 누르지 않아도 계속 들어요(옆 사람 말을 잘못 알아들을 수 있어요). 명령 목록은 PC 음성 명령과 같은 파일에서 와요. Chrome 음성 인식은 인터넷이 필요해요.</li>
-      <li><b>손짓 명령:</b> 장갑을 손등에 붙인 채로 해요. 기본은 손등 두 번 톡톡 = 듣기 시작, 손 세우고 1초 멈춤 = "방금 거 어때", 손목 빠르게 두 번 비틀기 = 굿샷, 세 번 흔들기 = 취소예요. 칸마다 다른 명령으로 바꾸거나 "직접 입력"으로 아무 음성 명령 문장(예: "7번 하프")을 붙일 수 있고, 이 휴대폰에 기억돼요. "손 세우고 멈춤"은 원하는 자세를 잡고 "자세 등록"을 한 번 눌러야 써요.</li>
-      <li><b>화면과 연결:</b> 장갑이 연결돼 있는 동안 화면이 꺼지지 않아요. 화면이 꺼지거나 다른 앱으로 가거나 뒤로 가면, 기록을 저장하고 장갑 연결을 끊어요. 그래야 장갑이 바로 다시 보여요(전에는 장갑이 연결된 줄 알고 RST를 눌러야 했어요). 돌아와서 "센서 장갑 연결"을 다시 누르면 돼요.</li>
-      <li><b>스윙 분석:</b> 장갑을 연결하면 스윙이 끝날 때마다 표에 한 줄이 생겨요. 템포(백스윙 시간 ÷ 다운스윙 시간), 손목 풀림(꺾였던 손목이 반쯤 풀린 순간, − = 임팩트 전), 손목 꺾임 최대, 손 회전 최고 속도예요. 임팩트 시각은 장갑이 들은 소리로 잡고(약 1.5초 뒤에 도착해서 그만큼 늦게 나와요), 소리가 없으면 움직임으로 잡아요. "스윙마다 말하기"를 켜면 한 줄로 읽어 줘요. 기록 파일에도 들어가요.</li>
-      <li>손목 꺾임은 어드레스를 0으로 둔 상대값이에요("정렬 시작"을 붙이면 실제 각도가 돼요). 템포는 시뮬레이션에서 실제보다 0.2~0.3쯤 낮게 나와요(백스윙 시작을 조금 늦게 잡아서). 스윙끼리 비교하는 데는 문제없어요. 장갑 수신 약 240 Hz, 빠진 프레임 0이면 정상이에요.</li>
+      <li data-i18n-html="helpCamera"></li>
+      <li data-i18n-html="helpFront"></li>
+      <li data-i18n-html="helpAddress"></li>
+      <li data-i18n-html="helpRotation"></li>
+      <li data-i18n-html="helpVideo"></li>
+      <li data-i18n-html="helpPose"></li>
+      <li data-i18n-html="helpNarrow"></li>
+      <li data-i18n-html="helpAudio"></li>
+      <li data-i18n-html="helpQuick"></li>
+      <li data-i18n-html="helpGraphs"></li>
+      <li data-i18n-html="helpRate"></li>
+      <li data-i18n-html="helpGlove"></li>
+      <li data-i18n-html="helpLog"></li>
+      <li data-i18n-html="helpVoice"></li>
+      <li data-i18n-html="helpGestures"></li>
+      <li data-i18n-html="helpConnection"></li>
+      <li data-i18n-html="helpSwing"></li>
+      <li data-i18n-html="helpAccuracy"></li>
     </ul>
   </details>
 </div>
@@ -288,10 +303,37 @@ import { SwingDetector, swingLine } from "./swing.js";
 import { VoiceCommands, Listener } from "./voice.js";
 import { GestureDetector } from "./gesture.js";
 import { R10Link, pairShots, shotLine } from "./r10.js";
+import { LANGUAGE_KEY, pickLanguage, speechLocale, text } from "./strings.js";
 const PAGE_VER = "2026-11-15c";
 const GLOVE_HZ = 240;   // the glove firmware's rate (was a menu with 400 for PC tests and 180 for old firmware)
 
 const $ = (id) => document.getElementById(id);
+const savedLanguage = () => { try { return localStorage.getItem(LANGUAGE_KEY); } catch { return null; } };
+let language = pickLanguage(savedLanguage(), navigator.language);
+const t = (key, ...args) => text(key, language, ...args);
+const ko = (key) => text(key, "ko");
+const boundText = new Map();
+function bindText(id, render) {
+  boundText.set(id, render);
+  $(id).textContent = render();
+}
+const setText = (id, key, ...args) => bindText(id, () => t(key, ...args));
+function applyLanguage() {
+  document.documentElement.lang = language;
+  for (const el of document.querySelectorAll("[data-i18n]")) {
+    if (!boundText.has(el.id)) el.textContent = t(el.dataset.i18n);
+  }
+  // Help paragraphs contain trusted markup from the strings table.
+  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
+  for (const [id, render] of boundText) $(id).textContent = render();
+  for (const button of document.querySelectorAll("[data-language]")) {
+    const selected = button.dataset.language === language;
+    button.setAttribute("aria-pressed", selected);
+    button.classList.toggle("on", selected);
+  }
+}
+applyLanguage();
 const video = $("video"), canvas = $("canvas"), ctx = canvas.getContext("2d");
 const MODELS = {
   lite: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
@@ -311,7 +353,7 @@ const say = (t) => {
 };
 
 async function loadModel() {
-  say("AI 모델을 불러오는 중…");
+  say(t("loadingModel"));
   const { PoseLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs");
   const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm");
   const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODELS.full, delegate }, runningMode: "VIDEO", numPoses: 1 });
@@ -353,10 +395,10 @@ function draw(P) {
 let frameState = "", frameSince = 0, frameSaid = "", frameSaidAt = 0;
 function speak(t) {
   if (!$("speak").checked || !window.speechSynthesis) return;
-  speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = "ko-KR"; u.rate = 1.1; speechSynthesis.speak(u);
+  speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = speechLocale(language); u.rate = 1.1; speechSynthesis.speak(u);
 }
 // Framing is judged only while the golfer is still. In a swing or waggle the hands blur and MediaPipe drops the wrists
-// even with the whole body in view, so "손이 잘려요" kept coming during swings (observed in testing). Moving = glove gyro over
+// even with the whole body in view, so the hands-out-of-frame alert kept coming during swings. Moving = glove gyro over
 // FRAME_MOVE_DPS (hand or forearm), or a wrist jumping across the image, within the last FRAME_QUIET_MS.
 const FRAME_HOLD_MS = 2000, FRAME_GAP_MS = 10000, FRAME_REPEAT_MS = 30000, FRAME_QUIET_MS = 3000, FRAME_MOVE_DPS = 250;
 let lastMoveMs = -Infinity, lastWrist = null;
@@ -364,28 +406,28 @@ function framing(lm) {
   const now = performance.now();
   if (lm) {
     const w = [lm[15], lm[16]];
-    // only well-seen wrists count: an off-screen wrist is guessed and jitters, which would keep "손이 잘려요" quiet forever
+    // Only well-seen wrists count: jitter in a guessed wrist would otherwise suppress the framing alert.
     if (lastWrist && w.some((q, i) => (q.visibility ?? 1) > 0.5 && lastWrist[i].v > 0.5 &&
         Math.hypot(q.x - lastWrist[i].x, q.y - lastWrist[i].y) > 0.05)) lastMoveMs = now;
     lastWrist = w.map((q) => ({ x: q.x, y: q.y, v: q.visibility ?? 1 }));
   }
   if (now - lastMoveMs < FRAME_QUIET_MS) { frameState = ""; return; }   // moving: say nothing, start the hold afresh
   let st;
-  if (!lm) st = "사람이 안 보여요";
+  if (!lm) st = "frameNobody";
   else {
     const ok = (k, v = 0.5) => (lm[k].visibility ?? 1) > v && lm[k].x > 0.02 && lm[k].x < 0.98 && lm[k].y > 0.02 && lm[k].y < 0.98;
-    if (![0, 7, 8].some((k) => ok(k))) st = "머리가 잘려요";
-    else if (![27, 28, 31, 32].every((k) => ok(k))) st = "발이 잘려요";
-    else if (![15, 16].every((k) => ok(k, 0.3))) st = "손이 잘려요";   // wrists in front of the body often score 0.3-0.5
-    else st = "전신이 보여요";
+    if (![0, 7, 8].some((k) => ok(k))) st = "frameHead";
+    else if (![27, 28, 31, 32].every((k) => ok(k))) st = "frameFeet";
+    else if (![15, 16].every((k) => ok(k, 0.3))) st = "frameHands";   // wrists in front of the body often score 0.3-0.5
+    else st = "frameFull";
   }
   if (st !== frameState) { frameState = st; frameSince = now; }
   // Was: said after 0.8 s and a problem repeated every 6 s, which nagged ("목소리 너무 자주 반복돼"). Now a state must
   // hold FRAME_HOLD_MS, framing lines are FRAME_GAP_MS apart, the same problem comes back only after FRAME_REPEAT_MS,
   // "nobody there" and "all in view" are said once, and a framing line never cuts off other speech.
-  const repeat = st !== "전신이 보여요" && st !== "사람이 안 보여요" && now - frameSaidAt > FRAME_REPEAT_MS;
+  const repeat = st !== "frameFull" && st !== "frameNobody" && now - frameSaidAt > FRAME_REPEAT_MS;
   if (now - frameSince > FRAME_HOLD_MS && now - frameSaidAt > FRAME_GAP_MS && (st !== frameSaid || repeat) &&
-      !(window.speechSynthesis && speechSynthesis.speaking)) { speak(st); frameSaid = st; frameSaidAt = now; }
+      !(window.speechSynthesis && speechSynthesis.speaking)) { speak(t(st)); frameSaid = st; frameSaidAt = now; }
 }
 
 // Camera frame time: the capture time Chrome reports for this frame (requestVideoFrameCallback), when it has one.
@@ -430,20 +472,20 @@ function loop() {
       draw(m.P);
 
       const wv = (m.P[15].v + m.P[16].v) / 2;
-      $("vis").textContent = `손목 신뢰도 ${(wv * 100).toFixed(0)}%`;
+      setText("vis", "wristConfidence", (wv * 100).toFixed(0));
       if (base) {
         const s = turn(m.sh, base.sh), h = turn(m.hp, base.hp), x = s - h, hd = (m.head - base.head) / base.headW;
         show("sh", s); show("hp", h); show("xf", x); show("hd", hd, "", 2);
         peaks.sh = Math.max(peaks.sh, s); peaks.hp = Math.max(peaks.hp, h); peaks.xf = Math.max(peaks.xf, x); peaks.hd = Math.max(peaks.hd, Math.abs(hd));
-        $("shMax").textContent = `최대 ${peaks.sh.toFixed(0)}°`; $("hpMax").textContent = `최대 ${peaks.hp.toFixed(0)}°`;
-        $("xfMax").textContent = `최대 ${peaks.xf.toFixed(0)}°`; $("hdMax").textContent = `최대 ${peaks.hd.toFixed(2)}`;
+        setText("shMax", "maxDegrees", peaks.sh.toFixed(0)); setText("hpMax", "maxDegrees", peaks.hp.toFixed(0));
+        setText("xfMax", "maxDegrees", peaks.xf.toFixed(0)); setText("hdMax", "maxUnitless", peaks.hd.toFixed(2));
         window.__stats.last = { sh: s, hp: h, xf: x, hd };
       }
       window.__lastMeasure = m;
     } else {
-      $("vis").textContent = "사람을 찾는 중";
+      setText("vis", "findingPerson");
     }
-    if (frames % 10 === 0) { $("fps").textContent = `${fpsAvg.toFixed(0)} fps`; window.__stats.fps = fpsAvg; }
+    if (frames % 10 === 0) { setText("fps", "fps", fpsAvg.toFixed(0)); window.__stats.fps = fpsAvg; }
   }
   requestAnimationFrame(loop);
 }
@@ -454,8 +496,8 @@ async function begin(source) {
     running = true; base = null; peaks = null; watchFrames();
     $("base").disabled = false; $("rec").disabled = typeof MediaRecorder === "undefined";
     lastT = performance.now(); requestAnimationFrame(loop);
-    say(source === "camera" ? "어드레스 자세를 잡고 '어드레스 기준 잡기'를 눌러 주세요." : "영상 시험 중이에요. 첫 장면에서 '어드레스 기준 잡기'를 누르면 숫자가 나와요.");
-  } catch (e) { say("AI 모델을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."); console.error(e); }
+    say(source === "camera" ? t("cameraAddress") : t("fileAddress"));
+  } catch (e) { say(t("modelError")); console.error(e); }
 }
 
 // Camera: front only (the golfer watches the screen), 4:3 (the sensor's full height, more room head to toe).
@@ -483,11 +525,11 @@ async function openCamera() {
   // log stay as the camera sees, so a right-handed golfer stays right-handed in the data.
   for (const id of ["canvas", "impImg"]) $(id).style.transform = "scaleX(-1)";
   const set = camStream.getVideoTracks()[0].getSettings();
-  say(`카메라: 전면 ${set.width}×${set.height}. 화면만 거울처럼 뒤집어 보여요.`);
+  say(t("cameraOpened", set.width, set.height));
 }
 $("start").onclick = async () => {
   try { await openCamera(); if (!running) await begin("camera"); }
-  catch (e) { say("카메라를 열지 못했어요. 브라우저의 카메라 권한을 허용하고 다시 눌러 주세요. 다른 탭에서 이 페이지가 카메라를 쓰고 있으면 그 탭을 닫아 주세요."); console.error(e); }
+  catch (e) { say(t("cameraError")); console.error(e); }
 };
 
 $("file").onchange = async (ev) => {
@@ -497,9 +539,9 @@ $("file").onchange = async (ev) => {
 
 $("base").onclick = () => {
   const m = window.__lastMeasure;
-  if (!m) { say("아직 사람을 찾지 못했어요. 몸 전체가 화면에 들어오게 해 주세요."); return; }
+  if (!m) { say(t("addressNoPerson")); return; }
   base = { sh: m.sh, hp: m.hp, head: m.head, headW: m.headW }; peaks = { sh: 0, hp: 0, xf: 0, hd: 0 };
-  say("기준을 잡았어요. 이제 스윙해 보세요.");
+  say(t("addressReady"));
 };
 
 
@@ -525,7 +567,8 @@ function onGlove(r) {
     }
   } else if (r.type === "status") {
     lastStatus = r;
-    gloveText("gBat", (r.mv / 1000).toFixed(2) + " V"); gloveText("gArm", (r.armOk ? (armDead ? "팔 IMU 값 0 — 케이블!" : "팔 IMU 있음") : "팔 IMU 없음!") + (r.charging ? " · 충전 중" : ""));
+    gloveText("gBat", (r.mv / 1000).toFixed(2) + " V");
+    bindText("gArm", () => t(r.armOk ? (armDead ? "armZero" : "armPresent") : "armMissing") + (r.charging ? t("charging") : ""));
     if (logging) log.status.push(r);
   } else if (r.type === "clip" && r.clip.kind === "motion") {   // 833 Hz gyro around the impact, after its sound clip
     const c = r.clip, m = motionFrames(c); motionById.set(c.id, m);
@@ -534,7 +577,8 @@ function onGlove(r) {
     if (logging) log.motion.push({ id: c.id, t_us: c.t_us, impactFrame: c.pre, frames: m.t.length, rate: c.rate / 10, flags: c.peak, t: m.t, g: Array.from(m.g) });
   } else if (r.type === "clip") {
     gStats.clips++; gloveText("gClips", String(gStats.clips));
-    const c = r.clip; drawClip(c); if (c.kind === "impact") { swingDet.sound(c.t_us / 1e6); setTimeout(() => drawImpact(c), 0); ovSound(c); } gloveText("gLog", `${c.kind === "voice" ? "목소리" : "임팩트"} ${(c.total / c.rate).toFixed(1)}초`);
+    const c = r.clip; drawClip(c); if (c.kind === "impact") { swingDet.sound(c.t_us / 1e6); setTimeout(() => drawImpact(c), 0); ovSound(c); }
+    bindText("gLog", () => t("clipDuration", t(c.kind === "voice" ? "voice" : "impact"), (c.total / c.rate).toFixed(1)));
     if (logging) log.clips.push({ kind: c.kind, id: c.id, t_us: c.t_us, pre: c.pre, total: c.total, rate: c.rate, peak: c.peak, firstNow: c.firstNow, lastNow: c.lastNow,
       partial: !!c.partial, missingChunks: c.missingN ?? null, chunks: c.chunks ?? null, samples: Array.from(clipSamples(c)) });
   } else if (r.type === "clipLost") {   // a sound clip with too few chunks (or no header) to keep
@@ -552,21 +596,21 @@ setInterval(() => {
     for (const r of gyroBuf) if (r[0] >= tEnd - 3) { h3 = Math.max(h3, r[1]); a3 = Math.max(a3, r[2]); }
     gloveText("gGyro", `${h3.toFixed(0)} / ${a3.toFixed(0)}`);
     const hit = h3 >= SAT_DPS - 1 || a3 >= SAT_DPS - 1;
-    gloveText("gSat", `°/s${hit ? " · 한계(2293)에 닿음" : ""} · 전체 최대 ${gStats.hand.toFixed(0)} / ${gStats.arm.toFixed(0)}`);
-    if (logging) gloveText("gLog", `기록 중 ${((now - log.t0) / 1000).toFixed(0)}초`);
+    bindText("gSat", () => t("gyroStats", hit ? t("saturated") : "", gStats.hand.toFixed(0), gStats.arm.toFixed(0)));
+    if (logging) setText("gLog", "loggingSeconds", ((now - log.t0) / 1000).toFixed(0));
   }
 }, 250);
 
 let dropByUs = false;   // true while the page itself drops the link (button, page hidden, reconnect retry); any other drop is unexpected
 function gloveState(st) {
-  gloveText("gState", st === "connected" ? "연결됨" : "연결 끊김");
+  setText("gState", st === "connected" ? "connected" : "linkDropped");
   if (st === "connected") keepAwake(); else releaseAwake();
-  $("glove").textContent = st === "connected" ? "장갑 연결 끊기" : "센서 장갑 연결";
+  setText("glove", st === "connected" ? "disconnectGlove" : "connectGlove");
   $("log").disabled = st !== "connected";
   const wasLogging = logging;
   if (st !== "connected" && logging) { qEvent("glove_drop", { byUs: dropByUs }, "glove"); stopLog(); }
   // Unexpected drop (glove RST or watchdog, out of range, radio hiccup; range 2026-11-15: after an RST the page sat at
-  // "연결 끊김" until the user noticed): reconnect to the same glove by itself, as after the screen comes back on.
+  // t("linkDropped") until the user noticed): reconnect to the same glove by itself, as after the screen comes back on.
   if (st !== "connected" && !dropByUs && glove && !resume) {
     resume = { log: wasLogging };
     // hidden (the glove can drop a backgrounded page whose heartbeats stalled): reconnect when it is shown again
@@ -575,7 +619,7 @@ function gloveState(st) {
   if (st !== "connected") dropByUs = false;
 }
 async function afterConnect(p) {   // after a first connect or an automatic reconnect
-  gloveText("gBatch", p.probeLen ? `패킷 ${p.probeLen} B · ${p.batch}프레임씩` : "패킷 크기 확인 실패 · 1프레임씩");
+  setText("gBatch", p.probeLen ? "packetSize" : "packetUnknown", p.probeLen, p.batch);
   gStats = { n: 0, t0: performance.now(), hand: 0, arm: 0, clips: 0 };
   await glove.start(GLOVE_HZ, 1); await glove.send("status");
 }
@@ -584,13 +628,13 @@ $("glove").onclick = async () => {
   if (glove && glove.device && glove.device.gatt.connected) { dropByUs = true; await glove.stop().catch(() => {}); glove.disconnect(); return; }
   try {
     glove = new Glove(onGlove, gloveState);
-    say("장갑을 찾는 중… 목록에서 SensorGlove를 골라 주세요.");
+    say(t("scanGlove"));
     await afterConnect(await glove.connect());
-    say("장갑 연결됨. '기록 시작'으로 저장할 수 있어요.");
+    say(t("gloveReady"));
   } catch (e) {
     console.error(e);
-    say(e.message === "no-web-bluetooth" ? "이 브라우저는 웹 블루투스가 없어요. 안드로이드 Chrome으로 열어 주세요." :
-        e.name === "NotFoundError" ? "장갑을 고르지 않았거나 찾지 못했어요. 장갑 LED가 파랗게 깜빡이는지 확인해 주세요." : "장갑 연결 실패: " + e.message);
+    say(e.message === "no-web-bluetooth" ? t("noBluetooth") :
+        e.name === "NotFoundError" ? t("gloveNotFound") : t("gloveError", e.message));
   }
 };
 
@@ -616,24 +660,24 @@ function onSwing(sw) {
   for (const [name, source, heard] of heldLabels.splice(0)) labelLast(name, source, heard);
   renderSwings();
   if ($("swSpeak").checked && window.speechSynthesis) {
-    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(swingLine(sw)); u.lang = "ko-KR"; u.rate = 1.05; speechSynthesis.speak(u);
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(swingLine(sw, language)); u.lang = speechLocale(language); u.rate = 1.05; speechSynthesis.speak(u);
   }
 }
 window.__pgTest = { onGlove, swingDet, swings };   // headless test: replay a log without Bluetooth
-const SRC = { sound: "소리", accel: "움직임", "arm peak": "팔 최고속" };
-function renderSwings() {
+const SRC = { sound: "sourceSound", accel: "sourceAccel", "arm peak": "sourceArm" };
+function renderSwings(showOverlay = true) {
   const last = swings.slice(-4).reverse();
   const f1 = (v) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(1) : "–");
   $("swRows").innerHTML = last.map((w) => {
     const r = r10Of(w.n), b = (r && r.msg.ball) || {};
     return `<tr><td>${w.n}</td><td>${w.tempo.toFixed(1)}</td>` +
       `<td>${Number.isFinite(w.release_ms) ? (w.release_ms > 0 ? "+" : "") + w.release_ms.toFixed(0) : "–"}</td><td>${Number.isFinite(w.hinge_top) ? w.hinge_top.toFixed(0) : "–"}</td>` +
-      `<td class="${w.saturated ? "sat" : ""}">${w.hand_dps_peak.toFixed(0)}${(w.sat_hand ?? w.saturated) ? "!" : ""}${w.sat_arm ? " 손목!" : ""}</td>` +
-      `<td>${Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–"}</td><td>${f1(b.LaunchDirection)}</td><td>${SRC[w.source] || w.source}</td></tr>`;
+      `<td class="${w.saturated ? "sat" : ""}">${w.hand_dps_peak.toFixed(0)}${(w.sat_hand ?? w.saturated) ? "!" : ""}${w.sat_arm ? t("wristSaturated") : ""}</td>` +
+      `<td>${Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–"}</td><td>${f1(b.LaunchDirection)}</td><td>${SRC[w.source] ? t(SRC[w.source]) : w.source}</td></tr>`;
   }).join("");
-  renderLast();
+  renderLast(showOverlay);
   const tp = swings.slice(-10).map((w) => w.tempo).sort((a, b) => a - b);
-  $("swTitle").textContent = `스윙 ${swings.length}번 · 템포 중앙값 ${tp[Math.floor(tp.length / 2)].toFixed(1)}` + (swings[swings.length - 1].hand_only ? " · 팔 IMU 없음: 템포는 대략값" : "");
+  $("swTitle").textContent = t("swingCount", swings.length, tp[Math.floor(tp.length / 2)].toFixed(1)) + (swings[swings.length - 1].hand_only ? t("estimatedTempo") : "");
 }
 
 // ---- R10 shots from the R10 Bridge app (r10.js), paired with glove swings ----
@@ -645,18 +689,22 @@ const r10Link = new R10Link((msg, arrivalMs) => {
   if (logging) log.r10.push(s);
   r10Pair(); renderR10();
   if (s.swing == null && !r10Timer) r10Timer = setInterval(() => { r10Pair(); if (!r10Shots.some((x) => x.swing == null && !x.gaveUp)) { clearInterval(r10Timer); r10Timer = null; } renderR10(); }, 1000);
-}, (text, ok) => { $("r10State").textContent = text; $("r10State").style.color = ok ? "var(--fg)" : "var(--muted)"; });
+}, (key, ok, arg) => {
+  if (key === "legacyStatus") bindText("r10State", () => language === "ko" ? arg : t("r10SocketOpen"));
+  else setText("r10State", key, arg);
+  $("r10State").style.color = ok ? "var(--fg)" : "var(--muted)";
+});
 function r10Pair() {
   for (const s of pairShots(swings, r10Shots, performance.now())) {
     renderR10(); if (swings.length) renderSwings();
-    if ($("r10Speak").checked) speak(shotLine(s.msg));
+    if ($("r10Speak").checked) speak(shotLine(s.msg, language));
   }
 }
 function renderR10() {
   const f = (v) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(1) : "–");
   $("r10Rows").innerHTML = r10Shots.slice(-4).reverse().map((s) => {
     const b = s.msg.ball || {}, c = s.msg.club || {};
-    const pair = s.swing != null ? `#${s.swing} <small>${s.lagMs.toFixed(0)}</small>` : s.gaveUp ? "없음" : "기다림";
+    const pair = s.swing != null ? `#${s.swing} <small>${s.lagMs.toFixed(0)}</small>` : s.gaveUp ? t("r10Unpaired") : t("r10Pending");
     return `<tr><td>${s.msg.shot}</td><td>${Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–"}</td><td>${f(b.LaunchDirection)}</td><td>${f(Number.isFinite(b.SpinAxis) && b.SpinAxis > 180 ? b.SpinAxis - 360 : b.SpinAxis)}</td>` +
       `<td>${f(c.ClubAnglePath)}</td><td>${f(c.ClubAngleFace)}</td><td>${pair}</td></tr>`;
   }).join("");
@@ -693,29 +741,31 @@ window.__pgTest.ov = { ovSpec, ovShow };
 // the paired R10 shot of swing n (r10Shots is filled by the R10 link below)
 function r10Of(n) { return typeof r10Shots === "undefined" ? null : r10Shots.find((x) => x.swing === n) || null; }
 const SWOV_MS = 5000; let swOvKey = "", swOvTimer = null;
-function renderLast() {
+function renderLast(showOverlay) {
   const w = swings[swings.length - 1]; if (!w) return;
   const r = r10Of(w.n), b = (r && r.msg.ball) || {}, c = (r && r.msg.club) || {};
   // the camera usually fills the screen, so the key numbers of a new swing (and of its R10 shot when it pairs) fade in over it
-  const key = `${w.n}|${r ? r.msg.shot : ""}`;
+  const key = `${w.n}|${r ? r.msg.shot : ""}|${language}`;
   if (key !== swOvKey) {
     swOvKey = key;
-    const t = (l, v, cls = "") => `<div class="${cls}"><span>${l}</span><b>${v}</b></div>`, sg1 = (v) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(1) : "–");
-    $("swOvTitle").textContent = `스윙 #${w.n}` + (r ? ` · R10 샷 #${r.msg.shot}` : " · R10 기다리는 중");
-    $("swOvRow").innerHTML = t("템포", w.tempo.toFixed(1)) + t("손목 풀림", Number.isFinite(w.release_ms) ? (w.release_ms > 0 ? "+" : "") + w.release_ms.toFixed(0) : "–") +
-      t("꺾임 °", Number.isFinite(w.hinge_top) ? w.hinge_top.toFixed(0) : "–") + t("손 °/s", w.hand_dps_peak.toFixed(0)) +
-      t("볼 mph", Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–", "r10") + t("출발 °", sg1(b.LaunchDirection), "r10") +
-      t("패스 °", sg1(c.ClubAnglePath), "r10") + t("페이스 °", sg1(c.ClubAngleFace), "r10");
-    stageInView();
-    $("swOv").classList.add("show"); clearTimeout(swOvTimer); swOvTimer = setTimeout(() => $("swOv").classList.remove("show"), SWOV_MS);
+    const metric = (l, v, cls = "") => `<div class="${cls}"><span>${l}</span><b>${v}</b></div>`, sg1 = (v) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(1) : "–");
+    $("swOvTitle").textContent = t("swingNumber", w.n) + (r ? t("r10NumberSuffix", r.msg.shot) : t("r10WaitingSuffix"));
+    $("swOvRow").innerHTML = metric(t("tempo"), w.tempo.toFixed(1)) + metric(t("release"), Number.isFinite(w.release_ms) ? (w.release_ms > 0 ? "+" : "") + w.release_ms.toFixed(0) : "–") +
+      metric(t("hingeDeg"), Number.isFinite(w.hinge_top) ? w.hinge_top.toFixed(0) : "–") + metric(t("handRate"), w.hand_dps_peak.toFixed(0)) +
+      metric(t("ballMph"), Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–", "r10") + metric(t("launchDeg"), sg1(b.LaunchDirection), "r10") +
+      metric(t("pathDeg"), sg1(c.ClubAnglePath), "r10") + metric(t("faceDeg"), sg1(c.ClubAngleFace), "r10");
+    if (showOverlay) {
+      stageInView();
+      $("swOv").classList.add("show"); clearTimeout(swOvTimer); swOvTimer = setTimeout(() => $("swOv").classList.remove("show"), SWOV_MS);
+    }
   }
   const sg = (v, d = 1) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(d) : "–");
-  $("lsTitle").textContent = `마지막 스윙 #${w.n}` + (w.club ? ` · ${w.club}` : "");
-  $("lsPair").textContent = r ? `R10 샷 #${r.msg.shot}` : (Number.isFinite(w.impactPhoneMs) ? "R10 결과 기다리는 중" : "");
+  $("lsTitle").textContent = t("lastSwing", w.n) + (w.club ? ` · ${displayName(w.club)}` : "");
+  $("lsPair").textContent = r ? t("r10Number", r.msg.shot) : (Number.isFinite(w.impactPhoneMs) ? t("r10Waiting") : "");
   $("lsTempo").textContent = w.tempo.toFixed(1);
   $("lsRelease").textContent = Number.isFinite(w.release_ms) ? sg(w.release_ms, 0) : "–";
   $("lsHinge").textContent = Number.isFinite(w.hinge_top) ? w.hinge_top.toFixed(0) : "–";
-  $("lsHand").textContent = w.hand_dps_peak.toFixed(0) + ((w.sat_hand ?? w.saturated) ? "!" : "") + (w.sat_arm ? " 손목!" : "");
+  $("lsHand").textContent = w.hand_dps_peak.toFixed(0) + ((w.sat_hand ?? w.saturated) ? "!" : "") + (w.sat_arm ? t("wristSaturated") : "");
   $("lsBall").textContent = Number.isFinite(b.BallSpeed) ? b.BallSpeed.toFixed(1) : "–";
   $("lsDir").textContent = sg(b.LaunchDirection);
   $("lsPath").textContent = sg(c.ClubAnglePath);
@@ -723,80 +773,91 @@ function renderLast() {
 }
 
 // ---- voice commands (voice.js: voice.py's matcher; Chrome speech-to-text) ----
-let vc = null;
-fetch("./commands.json").then((r) => r.json()).then((cfg) => { vc = new VoiceCommands(cfg); }).catch(() => {});
+const matchers = {};
+fetch("./commands.json").then((r) => r.json()).then((cfg) => {
+  for (const lang of ["ko", "en"]) matchers[lang] = new VoiceCommands(cfg, lang);
+}).catch(() => {});
 // what to show for a command's args: the matching button name if there is one (so voice and buttons agree)
-function shown(kind, cmd, value) {
+function shown(kind, cmd, value, matcher = matchers[language]) {
   const btn = qList[kind] || [];
-  if (cmd) { const hit = cmd.say.find((ph) => btn.includes(ph)); if (hit) return hit; return cmd.say[0]; }
-  if (kind === "player") { const pl = vc.players.find((x) => x.name === value); const hit = pl && pl.say.find((ph) => btn.includes(ph)); return hit || value; }
+  if (cmd) return cmd.sayKo.find((ph) => btn.includes(ph)) || cmd.sayKo[0] || cmd.say[0];
+  if (kind === "player") {
+    const pl = matcher.players.find((x) => x.name === value);
+    return pl?.sayKo.find((ph) => btn.includes(ph)) || value;
+  }
   return value;
 }
 function reply(t) {
   $("vHeard").textContent = t;
   if (!window.speechSynthesis) return;
   listener.pause(); speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t); u.lang = "ko-KR"; u.rate = 1.1;
+  const u = new SpeechSynthesisUtterance(t); u.lang = speechLocale(language); u.rate = 1.1;
   u.onend = u.onerror = () => listener.resume(); speechSynthesis.speak(u);
 }
 const KIND = { set_club: "club", set_swing: "swing", set_player: "player" };
-function runVoice(alts) {
-  if (!vc) { $("vHeard").textContent = "명령 목록을 아직 못 불러왔어요"; return; }
+function runVoice(alts, commandLanguage = language) {
+  const matcher = matchers[commandLanguage];
+  if (!matcher) { $("vHeard").textContent = t("commandsLoading"); return; }
   // Chrome gives up to 3 guesses: take the best-scoring command
   let m = null;
-  for (const a of alts) { const x = vc.match(a); if (x && (!m || (x.action !== "note" && (m.action === "note" || x.score > m.score)))) m = x; }
+  for (const a of alts) { const x = matcher.match(a); if (x && (!m || (x.action !== "note" && (m.action === "note" || x.score > m.score)))) m = x; }
   if (!m) return;
   const heard = m.text, said = [];
   for (const c of [m, ...(m.also || [])]) {
     const kind = KIND[c.action];
     if (kind) {
-      const v = kind === "player" ? shown("player", null, c.args.name) : shown(kind, c.cmd);
-      setSetting(kind, v, "voice", heard); said.push(v);
+      const v = kind === "player" ? shown("player", null, c.args.name, matcher) : shown(kind, c.cmd);
+      setSetting(kind, v, "voice", heard); said.push(displayName(v));
     } else if (c.action === "label_last") {
       const v = c.args.label && !c.cmd ? c.args.label : shown("label", c.cmd);
-      if (labelLast(v, "voice", heard)) said.push(`방금 스윙 ${v}`); else return reply("아직 스윙이 없어요");
+      if (labelLast(v, "voice", heard)) said.push(t("labelFeedback", displayName(v))); else return reply(t("noSwing"));
     } else if (c.action === "undo_label") {
       const x = labeled.pop(); if (logging && log.labels.length) log.labels.pop();
       const sw = x && x.swing && swings.find((w) => w.n === x.swing); if (sw && sw.labels) sw.labels.pop();
-      qEvent("undo_label", x || null, "voice", heard); said.push(x ? `${x.label} 지웠어요` : "지울 라벨이 없어요");
+      qEvent("undo_label", x || null, "voice", heard); said.push(x ? t("labelUndone", displayName(x.label)) : t("nothingToUndo"));
     } else if (c.action === "speak_last") {
-      said.push(swings.length ? swingLine(swings[swings.length - 1]) : "아직 스윙이 없어요");
+      said.push(swings.length ? swingLine(swings[swings.length - 1], language) : t("noSwing"));
     } else if (c.action === "speak_summary") {
       const tp = swings.map((w) => w.tempo).sort((a, b) => a - b);
-      said.push(swings.length ? `스윙 ${swings.length}번, 템포 중앙값 ${tp[Math.floor(tp.length / 2)].toFixed(1)}` : "아직 스윙이 없어요");
+      said.push(swings.length ? t("summarySpoken", swings.length, tp[Math.floor(tp.length / 2)].toFixed(1)) : t("noSwing"));
     } else if (c.action === "speak_battery") {
-      said.push(lastStatus ? `장갑 배터리 ${(lastStatus.mv / 1000).toFixed(1)}볼트` : "장갑이 연결되지 않았어요");
+      said.push(lastStatus ? t("batterySpoken", (lastStatus.mv / 1000).toFixed(1)) : t("gloveNotConnected"));
     } else if (c.action === "speak_club") {
-      said.push(`지금 ${cur.player || "선수 없음"}, ${cur.club || "클럽 없음"}, ${cur.swing || "스윙 종류 없음"}`);
+      said.push(t("settingsSpoken", displayName(cur.player) || t("noPlayer"), displayName(cur.club) || t("noClub"), displayName(cur.swing) || t("noSwingType")));
     } else if (c.action === "start" || c.action === "stop") {
       const want = c.action === "start";
-      if ($("log").disabled) said.push("장갑을 먼저 연결해 주세요");
-      else if (want !== logging) { $("log").click(); said.push(want ? "기록 시작" : "기록 저장"); }
-      else said.push(want ? "이미 기록 중이에요" : "기록 중이 아니에요");
+      if ($("log").disabled) said.push(t("connectFirst"));
+      else if (want !== logging) { $("log").click(); said.push(want ? t("startLog") : t("logSaved")); }
+      else said.push(want ? t("alreadyLogging") : t("notLogging"));
     } else if (c.action === "calibrate") {
-      said.push("정렬은 아직 준비 중이에요");
+      said.push(t("alignmentPending"));
+    } else if (c.action === "listen") {
+      if (listener.ok) {
+        $("vCont").checked = true; listener.setContinuous(true);
+        said.push(t("listening"));
+      } else said.push(t("noSpeechRecognition"));
     } else {   // "note": nothing matched; keep it in the log
       qEvent("note", m.text, "voice", heard);
-      return reply(`못 알아들었어요: ${m.text}`);
+      return reply(t("unrecognized", m.text));
     }
   }
   reply(said.join(", "));
   $("vHeard").textContent = `"${heard}" → ${said.join(", ")}`;
 }
 const listener = new Listener(runVoice, (st, err) => {
-  $("vTalk").textContent = st === "listening" ? "듣는 중…" : "말로 하기";
-  if (st === "error" && err !== "no-speech" && err !== "aborted") $("vHeard").textContent = `음성 인식 오류: ${err}`;
-});
-if (!listener.ok) { $("vTalk").disabled = true; $("vCont").disabled = true; $("vHeard").textContent = "이 브라우저는 음성 인식이 없어요 (안드로이드 Chrome에서 돼요)"; }
+  setText("vTalk", st === "listening" ? "listening" : "talk");
+  if (st === "error" && err !== "no-speech" && err !== "aborted") $("vHeard").textContent = t("recognitionError", err);
+}, language);
+if (!listener.ok) { $("vTalk").disabled = true; $("vCont").disabled = true; setText("vHeard", "noSpeechRecognition"); }
 window.__pgTest.runVoice = runVoice;
 $("vTalk").onclick = () => listener.listenOnce();
 $("vCont").onchange = () => listener.setContinuous($("vCont").checked);
 
 // ---- hand gestures (gesture.js) -> a command phrase (run like a voice command) or "listen" ----
-const G_NAME = { tap2: "손등 두 번 톡톡", tap4: "손등 네 번 톡톡", hold: "손 세우고 1초 멈춤", twist: "손목 빠르게 두 번 비틀기", shake: "세 번 흔들기", dial: "다이얼처럼 손목 돌리기" };
-const G_DEFAULT = { tap2: "__listen", hold: "방금 거 어때", twist: "굿샷", shake: "취소" };
-const G_CHOICES = [["__listen", "듣기 시작 (말로 하기)"], ["방금 거 어때", "방금 거 어때"], ["굿샷", "굿샷"], ["뒤땅", "뒤땅"], ["취소", "취소"],
-  ["오늘 요약", "오늘 요약"], ["무슨 채야", "무슨 채야"], ["배터리", "배터리"], ["기록 시작", "기록 시작"], ["그만", "기록 그만"], ["", "끄기"]];
+// Keep the stored Korean preset values for existing settings. Custom phrases retain their entry language.
+const G_DEFAULT = { tap2: "__listen", hold: ko("gestureLast"), twist: ko("good"), shake: ko("cancel") };
+const G_CHOICES = [["__listen", "gestureListen"], ...["gestureLast", "good", "fat", "cancel", "gestureSummary",
+  "gestureClub", "battery", "startLog"].map((key) => [ko(key), key]), [ko("gestureStopValue"), "gestureStopLog"], ["", "gestureOff"]];
 const gLoad = () => { try { const v = JSON.parse(localStorage.getItem("pg-gesture-v1")); if (v && v.map) return v; } catch (e) {} return { on: true, map: { ...G_DEFAULT }, holdRef: null }; };
 let gCfg = gLoad(), lastHandAcc = null;
 const gSave = () => { try { localStorage.setItem("pg-gesture-v1", JSON.stringify(gCfg)); } catch (e) {} };
@@ -808,17 +869,24 @@ function dialNote(n) {
   if (logging && log.dialChecks) log.dialChecks.push(row);
 }
 const gestDet = new GestureDetector(onGesture, { holdRef: gCfg.holdRef, dialAxis: gCfg.dialAxis || null, enabled: { dial: false, tap4: gCfg.dialOn !== false }, onDialNote: dialNote });
-function gLabel(v) { const c = G_CHOICES.find((x) => x[0] === v); return c ? c[1] : v ? `"${v}"` : "끄기"; }
+function gLabel(v) { const c = G_CHOICES.find((x) => x[0] === v); return c ? t(c[1]) : `"${v}"`; }
 // ---- club wheel: a dial-like wrist turn steps the club, shown as a spinning 3D carousel ----
 // Clubs come from commands.json (set_club, in bag order: driver ... wedges, putter) under the names the quick buttons use.
 // The ring wraps both ways: one step past the driver comes back round to the shortest club, and the other way round.
 // Which way is "clockwise" depends on how the glove sits, so gCfg.dialRev flips it.
-const CW_SHORT = { "드라이버": "1W", "3번 우드": "3W", "5번 우드": "5W", "유틸": "UT", "피칭": "PW", "갭 웨지": "GW", "샌드": "SW", "로브 웨지": "LW", "퍼터": "PT" };
+const CW_SHORT = { driver: "shortDriver", wood3: "shortWood3", wood5: "shortWood5", hybrid: "shortHybrid",
+  pw: "shortPw", gw: "shortGw", sw: "shortSw", lw: "shortLw", putter: "shortPutter" };
 let cwPos = 0, cwTimer = null, cwBuilt = false;
-function cwClubs() { return vc ? vc.commands.filter((c) => c.action === "set_club").map((c) => shown("club", c)) : []; }
+function cwClubs() { return (matchers.ko?.commands || []).filter((c) => c.action === "set_club"); }
 function cwBuild(clubs) {
   const n = clubs.length, step = 360 / n, R = Math.round(70 / Math.tan(Math.PI / n));   // ~140 px between neighbours
-  $("cwRing").innerHTML = clubs.map((c, i) => `<div class="ci" data-i="${i}" style="transform: rotateY(${i * step}deg) translateZ(${R}px)">${CW_SHORT[c] || c.replace("번", "")}</div>`).join("");
+  $("cwRing").replaceChildren(...clubs.map((c, i) => {
+    const el = document.createElement("div"), id = c.args.club;
+    el.className = "ci"; el.dataset.i = i;
+    el.style.transform = `rotateY(${i * step}deg) translateZ(${R}px)`;
+    el.textContent = CW_SHORT[id] ? t(CW_SHORT[id]) : id.match(/^iron(\d+)$/)?.[1] || displayName(shown("club", c));
+    return el;
+  }));
   cwBuilt = true;
 }
 // club-change mode (2026-11-13): four taps on the back of the hand open it, the wheel stays up, turning the wrist a
@@ -837,29 +905,30 @@ function clubModeOff(why) {
   if (gestDet.dialAxis) { gCfg.dialAxis = gestDet.dialAxis.map((x) => +x.toFixed(3)); gSave(); }
   clearTimeout(cwTimer); cwTimer = setTimeout(() => $("clubWheel").classList.remove("show"), 1200);
   try { navigator.vibrate && navigator.vibrate(150); } catch (e) {}
-  if (cur.club) speak(cur.club);
+  if (cur.club) speak(displayName(cur.club));
 }
 function clubDial(g, inMode = false) {
   const clubs = cwClubs(); if (!clubs.length) return;
   if (!cwBuilt) cwBuild(clubs);
   const n = clubs.length, step = 360 / n;
-  let idx = clubs.indexOf(cur.club); if (idx < 0) idx = clubs.indexOf("7번") >= 0 ? clubs.indexOf("7번") : 0;
+  let idx = clubs.findIndex((c) => shown("club", c) === cur.club);
+  if (idx < 0) idx = Math.max(0, clubs.findIndex((c) => c.args.club === "iron7"));
   if (((cwPos % n) + n) % n !== idx) cwPos = idx;                   // the club was changed some other way: jump there quietly
   const dir = (gCfg.dialRev ? -1 : 1) * g.dir, steps = g.steps ?? 1;
   cwPos += dir * steps;                                              // unbounded, so the ring always spins the way the wrist turned
-  const sel = ((cwPos % n) + n) % n, name = clubs[sel];
+  const sel = ((cwPos % n) + n) % n, name = shown("club", clubs[sel]);
   const ring = $("cwRing"); ring.style.transform = `translateZ(-${Math.round(70 / Math.tan(Math.PI / n))}px) rotateY(${-cwPos * step}deg)`;
   ring.querySelectorAll(".ci").forEach((el) => {
     const i = +el.dataset.i; let d = Math.abs(((i - cwPos) % n + n) % n); d = Math.min(d, n - d);
     el.classList.toggle("sel", i === sel); el.style.opacity = d === 0 ? 1 : d <= 2 ? 0.7 - 0.2 * d : 0.12;
   });
-  $("cwName").textContent = name;
+  bindText("cwName", () => displayName(name));
   $("clubWheel").classList.add("show"); clearTimeout(cwTimer);
   if (!inMode) cwTimer = setTimeout(() => $("clubWheel").classList.remove("show"), 2200);   // in the mode the wheel stays up
   if (!steps) return;
   try { navigator.vibrate && navigator.vibrate(30); } catch (e) {}
   setSetting("club", name, "gesture", `${inMode ? "club mode" : "dial"} ${g.deg}°`);
-  if (!inMode) speak(name);                                          // in the mode the club is said once, when it closes
+  if (!inMode) speak(displayName(name));                              // in the mode the club is said once, when it closes
 }
 function onGesture(g) {
   if (g.name === "tap4") { if (gCfg.dialOn === false) return; if (clubMode) clubModeOff("tap4"); else clubModeOn(g.t); return; }
@@ -873,17 +942,17 @@ function onGesture(g) {
   const act = gCfg.map[g.name];
   qEvent("gesture", { gesture: g.name, action: act || null }, "gesture");
   if (!act) return;
-  $("gLast").textContent = `${G_NAME[g.name]} → ${gLabel(act)}`;
+  bindText("gLast", () => `${t(g.name)} → ${gLabel(act)}`);
   if (act === "__listen") { try { navigator.vibrate && navigator.vibrate(80); } catch (e) {} listener.listenOnce(); return; }
-  runVoice([act]);
+  runVoice([act], gCfg.languages?.[g.name] || "ko");
 }
 function gRender() {
   $("gOn").checked = gCfg.on; $("gBody").style.display = gCfg.on ? "" : "none";
   $("gRows").innerHTML = "";
   {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td style="white-space:normal">${G_NAME.tap4} → 손목 돌리기 (조금 = 천천히, 많이 = 빠르게) → 네 번 톡톡</td><td style="white-space:normal"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-dial="on"${gCfg.dialOn !== false ? " checked" : ""}> 채 바꾸기</label>` +
-      `<label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-dial="rev"${gCfg.dialRev ? " checked" : ""}> 방향 반대로</label></td>`;
+    tr.innerHTML = `<td style="white-space:normal">${t("gestureDialFlow", t("tap4"))}</td><td style="white-space:normal"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-dial="on"${gCfg.dialOn !== false ? " checked" : ""}> ${t("changeClub")}</label>` +
+      `<label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-dial="rev"${gCfg.dialRev ? " checked" : ""}> ${t("reverseDial")}</label></td>`;
     $("gRows").appendChild(tr);
     tr.querySelector('[data-dial="on"]').onchange = (e) => { gCfg.dialOn = e.target.checked; gestDet.enabled.tap4 = gCfg.dialOn; if (!gCfg.dialOn) clubModeOff("off"); gSave(); };
     tr.querySelector('[data-dial="rev"]').onchange = (e) => { gCfg.dialRev = e.target.checked; gSave(); };
@@ -891,22 +960,28 @@ function gRender() {
   for (const k of ["tap2", "hold", "twist", "shake"]) {
     const tr = document.createElement("tr");
     const v = gCfg.map[k] ?? "";
-    const opts = G_CHOICES.map(([val, txt]) => `<option value="${val}"${val === v ? " selected" : ""}>${txt}</option>`).join("")
-      + (G_CHOICES.some((c) => c[0] === v) ? "" : `<option value="${v.replace(/"/g, "&quot;")}" selected>"${v}"</option>`) + `<option value="__custom">직접 입력…</option>`;
-    tr.innerHTML = `<td style="white-space:normal">${G_NAME[k]}${k === "hold" ? `<br><button class="chip" data-reg="1" style="margin-top:4px">${gCfg.holdRef ? "자세 다시 등록" : "자세 등록"}</button>` : ""}</td>` +
-      `<td><select data-k="${k}" style="width:100%;padding:8px">${opts}</select></td>`;
+    tr.innerHTML = `<td style="white-space:normal">${t(k)}${k === "hold" ? `<br><button class="chip" data-reg="1" style="margin-top:4px">${t(gCfg.holdRef ? "registerAgain" : "poseRegistered")}</button>` : ""}</td>` +
+      `<td><select data-k="${k}" style="width:100%;padding:8px"></select></td>`;
+    const select = tr.querySelector("select");
+    select.setAttribute("aria-label", t(k));
+    for (const [val, key] of G_CHOICES) select.add(new Option(t(key), val));
+    if (!G_CHOICES.some((c) => c[0] === v)) select.add(new Option(`"${v}"`, v));
+    select.add(new Option(t("customGesture"), "__custom"));
+    select.value = v;
     $("gRows").appendChild(tr);
   }
   $("gRows").querySelectorAll("select").forEach((el) => el.onchange = () => {
     let v = el.value;
-    if (v === "__custom") { v = (prompt("이 손짓에 붙일 명령 (음성 명령처럼, 예: 7번 하프)") || "").trim(); if (!v) { gRender(); return; } }
+    const custom = v === "__custom";
+    if (custom) { v = (prompt(t("gesturePrompt")) || "").trim(); if (!v) { gRender(); return; } }
+    (gCfg.languages ||= {})[el.dataset.k] = custom ? language : "ko";
     gCfg.map[el.dataset.k] = v; gSave(); gRender();
   });
   const reg = $("gRows").querySelector("[data-reg]");
   if (reg) reg.onclick = () => {
-    if (!lastHandAcc) { say("장갑을 연결한 뒤에 자세를 잡고 눌러 주세요."); return; }
+    if (!lastHandAcc) { say(t("poseConnect")); return; }
     gCfg.holdRef = lastHandAcc.slice(); gestDet.setHoldRef(gCfg.holdRef); gSave(); gRender();
-    say("자세를 등록했어요. 이 자세로 1초 멈추면 알아들어요."); speak("자세 등록");
+    say(t("poseSaved")); speak(t("poseRegisteredSpoken"));
   };
 }
 $("gOn").onchange = () => { gCfg.on = $("gOn").checked; gSave(); gRender(); };
@@ -935,18 +1010,18 @@ function leaveCleanly(e) {   // save what was recorded, stop the stream, drop th
 const within = (ms, p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), ms))]);
 async function reconnect() {
   const r = resume; resume = null;
-  say("장갑에 다시 연결하는 중…");
+  say(t("reconnecting"));
   for (let i = 0; i < 6 && document.visibilityState === "visible"; i++) {   // the glove needs ~1 s to advertise again
     try {
       await within(10000, (async () => afterConnect(await glove.connect(true)))());
       dropByUs = false;
       if (r.log) $("log").onclick();
-      say(r.log ? "다시 연결됐어요. 앞 기록은 저장했고 새 기록을 시작했어요." : "다시 연결됐어요.");
+      say(r.log ? t("reconnectedLogging") : t("reconnected"));
       return;
     } catch (err) { console.warn("reconnect", i + 1, err); dropByUs = true; try { glove.disconnect(); } catch (e) {} await new Promise((ok) => setTimeout(ok, 1500)); }
   }
   dropByUs = false;
-  say("자동으로 다시 연결하지 못했어요. '센서 장갑 연결'을 눌러 주세요.");
+  say(t("reconnectFailed"));
 }
 // Short app switches keep the link and the recording (range 2026-11-15: every switch to Garmin Golf / R10 Bridge
 // dropped the glove and split the session into 10 files). The link is dropped only after HIDE_GRACE_MS hidden (screen
@@ -986,7 +1061,7 @@ function ckptDrop() { ckptTx((s) => s.delete("last")); }
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ meta: { recovered: true, saved: c.saved, page: c.page, hz: GLOVE_HZ }, ...c.log })], { type: "application/json" }));
       a.download = `swing-glove-${c.saved.slice(0, 19).replace(/[:T]/g, "-")}-recovered.json`; a.click();
-      say("지난번에 앱이 꺼지면서 남은 기록을 저장했어요 (recovered)."); ckptDrop();
+      say(t("recovered")); ckptDrop();
     };
   } catch (e) {}
 })();
@@ -1013,7 +1088,7 @@ function drawGyro() {
   g.font = `${11 * d}px system-ui`; g.fillStyle = "#9aa5ad"; g.strokeStyle = "#2d353b"; g.lineWidth = d;
   for (const v of [0, 1000, 2000]) { g.beginPath(); g.moveTo(0, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.fillText(String(v), 4 * d, Y(v) - 3 * d); }
   g.setLineDash([5 * d, 4 * d]); g.strokeStyle = "#9aa5ad"; g.beginPath(); g.moveTo(0, Y(SAT_DPS)); g.lineTo(W, Y(SAT_DPS)); g.stroke(); g.setLineDash([]);
-  g.fillText("센서 한계 2293", W - 90 * d, Y(SAT_DPS) - 3 * d);
+  g.textAlign = "right"; g.fillText(t("sensorLimit"), W - 5 * d, Y(SAT_DPS) - 3 * d); g.textAlign = "left";
   for (const [k, col] of [[1, "#4fc3f7"], [2, "#ffb74d"]]) {
     g.strokeStyle = col; g.lineWidth = 2 * d; g.beginPath();
     gyroBuf.forEach((r, i) => (i ? g.lineTo(X(r[0]), Y(r[k])) : g.moveTo(X(r[0]), Y(r[k])))); g.stroke();
@@ -1044,13 +1119,13 @@ function specTick() {
   g.drawImage(cv, -1, 0); g.putImageData(specCol, SPEC_W - 1, 0);
 }
 $("mic").onclick = async () => {
-  if (analyser) { clearInterval(specTimer); micStream.getTracks().forEach((t) => t.stop()); audioCtx.close(); analyser = null; $("mic").textContent = "마이크 켜기"; return; }
+  if (analyser) { clearInterval(specTimer); micStream.getTracks().forEach((t) => t.stop()); audioCtx.close(); analyser = null; setText("mic", "micOn"); return; }
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     audioCtx = new AudioContext(); analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0;
     audioCtx.createMediaStreamSource(micStream).connect(analyser); specBuf = new Float32Array(analyser.frequencyBinCount);
-    $("mic").textContent = "마이크 끄기"; specTimer = setInterval(specTick, 33);
-  } catch (e) { say("마이크를 열지 못했어요. 브라우저의 마이크 권한을 허용해 주세요."); console.error(e); }
+    setText("mic", "micOff"); specTimer = setInterval(specTick, 33);
+  } catch (e) { say(t("micError")); console.error(e); }
 };
 
 // glove clip: waveform (top third) + spectrogram (256-sample window, 2 ms step at 16 kHz)
@@ -1086,7 +1161,8 @@ function drawClip(c) {
   specs.forEach((m, f) => { for (let k = 0; k < N / 2; k++) { g.fillStyle = heat((m[k] - peak + 70) / 70); g.fillRect(f * cw, H - (k + 1) / (N / 2) * sh, cw + 1, sh / (N / 2) + 1); } });
   if (c.pre) { const xm = c.pre / x.length * W; g.strokeStyle = "#ffb74d"; g.beginPath(); g.moveTo(xm, 0); g.lineTo(xm, H); g.stroke(); }
   g.fillStyle = "#9aa5ad"; g.font = `${11 * d}px system-ui`; g.fillText(`${(c.rate / 2000).toFixed(0)} kHz`, 4 * d, hw + 14 * d); g.fillText("0", 4 * d, H - 4 * d);
-  $("clipTitle").textContent = c.kind === "voice" ? `목소리 클립 #${c.id} · ${(c.total / c.rate).toFixed(1)}초` : `임팩트 #${c.id} · 앞뒤 0.25초 · 주황 선 = 가장 큰 순간 · 최대 ${(c.peak / 32768 * 100).toFixed(0)}%`;
+  if (c.kind === "voice") setText("clipTitle", "voiceClip", c.id, (c.total / c.rate).toFixed(1));
+  else setText("clipTitle", "impactClip", c.id, (c.peak / 32768 * 100).toFixed(0));
 }
 
 // ---- impact overlay: sound and vibration spectrograms pop up over the camera for a few seconds ----
@@ -1100,8 +1176,8 @@ function armWatch() {
   const dead = swingDet.armSeen === false && (swingDet.armLost || 0) > 0;
   if (dead && (swingDet.armLost || 0) > armLostSeen) {
     armLostSeen = swingDet.armLost; armDead = true; qEvent("arm_lost", {}, "glove");
-    say("손목 센서 값이 0이에요. 케이블을 다시 꽂고, 안 되면 장갑 RST를 눌러 주세요."); speak("손목 센서 끊김");
-  } else if (!dead && armDead && swingDet.armSeen) { armDead = false; qEvent("arm_back", {}, "glove"); say("손목 센서 다시 들어와요."); }
+    say(t("armLost")); speak(t("armLostSpoken"));
+  } else if (!dead && armDead && swingDet.armSeen) { armDead = false; qEvent("arm_back", {}, "glove"); say(t("armRestored")); }
 }
 function ovShow() { stageInView(); $("impOv").classList.add("show"); clearTimeout(ovTimer); ovTimer = setTimeout(() => $("impOv").classList.remove("show"), OV_MS); }
 function ovSpec(cv, x, N, hop) {   // x: samples (any scale); paints a heat-map spectrogram over the whole canvas
@@ -1121,34 +1197,38 @@ function ovSpec(cv, x, N, hop) {   // x: samples (any scale); paints a heat-map 
 }
 function ovSound(c) {
   ovSpec($("ovSnd"), clipSamples(c), 256, c.rate >= 16000 ? 32 : 16);
-  $("ovSndCap").textContent = `타격음 · 0–${(c.rate / 2000).toFixed(0)} kHz` + (c.partial ? ` · 일부 (${c.chunks - c.missingN}/${c.chunks})` : "");
+  bindText("ovSndCap", () => t("soundRange", (c.rate / 2000).toFixed(0)) + (c.partial ? t("partialSound", c.chunks - c.missingN, c.chunks) : ""));
   const v = $("ovVib"), [W, H] = sizeCv(v), g = v.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
-  $("ovVibCap").textContent = "타격 진동 · 오는 중…";
+  setText("ovVibCap", "vibrationWaiting");
   ovShow();
 }
 function ovVibration(c, m) {   // 833 Hz hand IMU around the impact: accel magnitude (frame = gx gy gz ax ay az)
   const n = m.g.length / 6, a = new Float32Array(n);
   for (let i = 0; i < n; i++) { const x = m.g[6 * i + 3], y = m.g[6 * i + 4], z = m.g[6 * i + 5]; a[i] = Math.sqrt(x * x + y * y + z * z); }
   ovSpec($("ovVib"), a, 64, 4);
-  $("ovVibCap").textContent = `타격 진동 · 0–${Math.round(c.rate / 20)} Hz`;
+  setText("ovVibCap", "vibrationRange", Math.round(c.rate / 20));
   ovShow();
 }
 
 const motionById = new Map(); let lastImpact = null;
 
 // ---- quick select: the voice-command actions as buttons (same action names as host/commands.example.yaml) ----
-const Q_DEFAULT = {
-  player: ["나", "친구"],
-  club: ["드라이버", "3번 우드", "5번 우드", "유틸", "4번", "5번", "6번", "7번", "8번", "9번", "피칭", "갭 웨지", "샌드", "로브 웨지", "퍼터"],
-  swing: ["풀스윙", "쓰리쿼터", "하프 스윙", "칩샷", "피치샷", "펀치샷", "벙커샷"],
-  label: ["굿샷", "슬라이스", "훅", "뒤땅", "탑볼", "빈 스윙"],
+const Q_KEYS = {
+  player: ["nameMe", "nameFriend"],
+  club: ["driver", "wood3", "wood5", "hybrid", "iron4", "iron5", "iron6", "iron7", "iron8", "iron9", "pw", "gw", "sw", "lw", "putter"],
+  swing: ["full", "threeQuarter", "half", "chip", "pitch", "punch", "bunker"],
+  label: ["good", "slice", "hook", "fat", "thin", "practice"],
 };
-const Q_NAME = { player: "선수", club: "클럽", swing: "스윙", label: "방금 스윙 라벨" };
+const Q_DEFAULT = Object.fromEntries(Object.entries(Q_KEYS).map(([kind, keys]) => [kind, keys.map(ko)]));
+const nameKeys = new Map(Object.values(Q_KEYS).flat().map((key) => [ko(key), key]));
+nameKeys.set(ko("goodLong"), "goodLong");
+function displayName(name) { const key = nameKeys.get(name); return key ? t(key) : name; }
+const Q_NAME = { player: "player", club: "club", swing: "swingType", label: "shotLabel" };
 const Q_ACTION = { player: "set_player", club: "set_club", swing: "set_swing", label: "label_last" };
 const qLoad = () => { try { const v = JSON.parse(localStorage.getItem("pg-quick-v1")); if (v && v.club) return v; } catch (e) {} return JSON.parse(JSON.stringify(Q_DEFAULT)); };
 const qSave = () => { try { localStorage.setItem("pg-quick-v1", JSON.stringify(qList)); } catch (e) {} };
 let qList = qLoad(), qEditing = false;
-const cur = { player: (() => { try { return localStorage.getItem("pg-quick-player") || "나"; } catch (e) { return "나"; } })(), club: null, swing: null };
+const cur = { player: (() => { try { return localStorage.getItem("pg-quick-player") || ko("nameMe"); } catch (e) { return ko("nameMe"); } })(), club: null, swing: null };
 const labeled = [];   // {id, label} for this session
 function qEvent(action, value, source = "tap", heard) {
   if (logging) log.events.push({ phoneMs: +performance.now().toFixed(1), action, value, source, ...(heard ? { heard } : {}) });
@@ -1164,26 +1244,28 @@ function labelLast(name, source, heard) {
   // a swing that was just hit isn't in the table yet: hold the label and attach it when that swing's row appears,
   // otherwise "굿샷" said right after the shot would land on the previous swing
   if (typeof swingDet !== "undefined" && swingDet.pending) {
-    heldLabels.push([name, source, heard]); $("qLast").textContent = `${name}: 방금 스윙 분석이 끝나면 붙여요`; return true;
+    heldLabels.push([name, source, heard]); bindText("qLast", () => t("labelWaiting", displayName(name))); return true;
   }
   // the label goes to the latest impact sound and to the latest analysed swing (a practice swing has no sound)
   const sw = typeof swings !== "undefined" && swings.length ? swings[swings.length - 1] : null;
-  if (!lastImpact && !sw) { say("아직 스윙이 없어요. 스윙한 뒤에 라벨을 붙여 주세요."); return false; }
+  if (!lastImpact && !sw) { say(t("labelNoSwing")); return false; }
   const tgt = { impact: lastImpact ? lastImpact.id : null, swing: sw ? sw.n : null };
   if (sw) (sw.labels = sw.labels || []).push(name);
   labeled.push({ id: tgt.impact, swing: tgt.swing, label: name }); qEvent("label_last", { ...tgt, label: name }, source, heard);
   if (logging) log.labels.push({ ...tgt, label: name, phoneMs: +performance.now().toFixed(1), source });
-  $("qLast").textContent = `${tgt.swing ? `스윙 #${tgt.swing}` : `임팩트 #${tgt.impact}`} → ${name}` + (labeled.length > 1 ? ` (이번에 ${labeled.length}개)` : "");
+  const count = labeled.length;
+  bindText("qLast", () => `${tgt.swing ? t("swingNumber", tgt.swing) : t("impactNumber", tgt.impact)} → ${displayName(name)}` +
+    (count > 1 ? t("labelCount", count) : ""));
   return true;
 }
 function qRender() {
-  $("nowSet").textContent = `지금: ${cur.player || "–"} · ${cur.club || "클럽 –"} · ${cur.swing || "스윙 –"}`;
+  $("nowSet").textContent = t("nowSettings", displayName(cur.player) || "–", displayName(cur.club) || t("clubEmpty"), displayName(cur.swing) || t("swingEmpty"));
   const box = $("qChips"); box.innerHTML = "";
   for (const kind of ["player", "club", "swing", "label"]) {
-    const g = document.createElement("div"); g.className = "g"; g.textContent = Q_NAME[kind]; box.appendChild(g);
+    const g = document.createElement("div"); g.className = "g"; g.textContent = t(Q_NAME[kind]); box.appendChild(g);
     qList[kind].forEach((name, i) => {
       const b = document.createElement("button"); b.className = "chip" + (kind === "label" ? " lab" : "") + (cur[kind] === name ? " on" : "");
-      b.textContent = name;
+      b.textContent = displayName(name);
       if (qEditing) { const x = document.createElement("span"); x.className = "x"; x.textContent = "✕"; b.appendChild(x); }
       b.onclick = () => {
         if (qEditing) { qList[kind].splice(i, 1); qSave(); qRender(); return; }
@@ -1193,18 +1275,18 @@ function qRender() {
       box.appendChild(b);
     });
     if (qEditing) {
-      const a = document.createElement("button"); a.className = "chip add"; a.textContent = "+ 추가";
-      a.onclick = () => { const v = (prompt(`${Q_NAME[kind]}에 추가할 이름`) || "").trim(); if (v && !qList[kind].includes(v)) { qList[kind].push(v); qSave(); qRender(); } };
+      const a = document.createElement("button"); a.className = "chip add"; a.textContent = t("addButton");
+      a.onclick = () => { const v = (prompt(t("addName", t(Q_NAME[kind]))) || "").trim(); if (v && !qList[kind].some((name) => name === v || displayName(name) === v)) { qList[kind].push(v); qSave(); qRender(); } };
       box.appendChild(a);
     }
   }
   if (qEditing) {
-    const r = document.createElement("button"); r.className = "chip add"; r.textContent = "기본 목록으로 되돌리기";
-    r.onclick = () => { if (confirm("버튼 목록을 기본값으로 되돌릴까요?")) { qList = JSON.parse(JSON.stringify(Q_DEFAULT)); qSave(); qRender(); } };
+    const r = document.createElement("button"); r.className = "chip add"; r.textContent = t("resetButtons");
+    r.onclick = () => { if (confirm(t("confirmReset"))) { qList = JSON.parse(JSON.stringify(Q_DEFAULT)); qSave(); qRender(); } };
     box.appendChild(r);
   }
 }
-$("qEdit").onclick = () => { qEditing = !qEditing; $("qEdit").textContent = qEditing ? "완료" : "편집"; qRender(); };
+$("qEdit").onclick = () => { qEditing = !qEditing; setText("qEdit", qEditing ? "done" : "edit"); qRender(); };
 // collapsed unless checked; the choice is remembered on this phone
 const qShow = (on) => { $("qBody").style.display = on ? "" : "none"; $("qEdit").style.display = on ? "" : "none"; if (!on && qEditing) $("qEdit").click(); };
 $("qOn").checked = (() => { try { return localStorage.getItem("pg-quick-on") === "1"; } catch (e) { return false; } })();
@@ -1236,7 +1318,7 @@ function drawImpact(c) {
   g.clearRect(0, 0, W, H);
   const X = (t) => (t - ti + 1000) / 2000 * W, Y = (v, top) => H - 4 * d - Math.min(v, top) / top * (H - 10 * d);
   g.strokeStyle = "#2d353b"; g.lineWidth = d; for (const v of [-1000, -500, 0, 500, 1000]) { g.beginPath(); g.moveTo(X(ti + v), 0); g.lineTo(X(ti + v), H); g.stroke(); }
-  g.fillStyle = "#9aa5ad"; g.font = `${11 * d}px system-ui`; g.fillText("-1초", 2 * d, 12 * d); g.fillText("+1초", W - 26 * d, 12 * d);
+  g.fillStyle = "#9aa5ad"; g.font = `${11 * d}px system-ui`; g.fillText(t("minusSecond"), 2 * d, 12 * d); g.fillText(t("plusSecond"), W - 26 * d, 12 * d);
   for (const [k, col] of [[1, "#4fc3f7"], [2, "#ffb74d"]]) {
     g.strokeStyle = col; g.lineWidth = 2 * d; g.beginPath(); let first = true;
     for (const r of gyroLong) { const t = clock.toPhone(r[0]); if (t < ti - 1000 || t > ti + 1000) continue; first ? g.moveTo(X(t), Y(r[k], 2400)) : g.lineTo(X(t), Y(r[k], 2400)); first = false; }
@@ -1259,14 +1341,14 @@ function drawImpact(c) {
   g.stroke();
   g.strokeStyle = "#ff5252"; g.lineWidth = 2 * d; g.beginPath(); g.moveTo(X(ti), 0); g.lineTo(X(ti), H); g.stroke();
   if (best) { g.setLineDash([4 * d, 3 * d]); g.strokeStyle = "#eef1f3"; g.beginPath(); g.moveTo(X(best.t), 0); g.lineTo(X(best.t), H); g.stroke(); g.setLineDash([]); }
-  $("impTitle").textContent = `임팩트 #${c.id} · 빨간 선 = 장갑이 들은 임팩트(휴대폰 시계로 바꾼 시각)`;
-  if (mo) $("impNote").textContent = "";
-  $("impNote").textContent = (mo ? `833 Hz ${mo.t.length}프레임 · ` : "") + (best ? `화면 ${(best.t - ti >= 0 ? "+" : "") + (best.t - ti).toFixed(0)} ms (점선)` : "카메라 화면 없음");
+  setText("impTitle", "impactNumberNote", c.id);
+  bindText("impNote", () => (mo ? t("motionFrames", mo.t.length) : "") +
+    (best ? t("impactFrame", (best.t - ti >= 0 ? "+" : "") + (best.t - ti).toFixed(0)) : t("noImpactFrame")));
 }
 
 
 function stopLog() {
-  logging = false; $("log").textContent = "기록 시작"; document.body.classList.remove("recording"); ckptDrop();
+  logging = false; setText("log", "startLog"); document.body.classList.remove("recording"); ckptDrop();
   const ck = glove && glove.parser.clock;
   log.sync = ck && ck.ready() ? { note: "phone_ms = glove_ms + b + a * (glove_ms - t0), glove_ms = t_us / 1000", a: ck.a, b: ck.b, t0: ck.t0 } : null;
   const meta = { saved: new Date().toISOString(), userAgent: navigator.userAgent, micSpectrogram: !!analyser, camera: running, page: PAGE_VER, batch: glove && glove.batch, probeLen: glove && glove.parser.probeLen,
@@ -1277,15 +1359,15 @@ function stopLog() {
   const blob = new Blob([JSON.stringify({ meta, ...log })], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
   a.download = `swing-glove-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`; a.click();
-  speak("저장했어요");
-  say(`저장했어요: 장갑 ${log.glove.length}프레임, 자세 ${log.pose.length}프레임, 클립 ${log.clips.length}개.`);
+  speak(t("savedSpoken"));
+  say(t("savedCounts", log.glove.length, log.pose.length, log.clips.length));
 }
 $("log").onclick = () => {
   if (logging) { stopLog(); return; }
   gStats.hand = 0; gStats.arm = 0;
   log = { cap: [], impacts: [], motion: [], swings: [], events: [{ phoneMs: +performance.now().toFixed(1), action: "settings", value: { ...cur }, source: "log start" }], labels: [], r10: [], dialChecks: [], swingsDropped: [], clipsLost: [], t0: performance.now(), glove: [], pose: [], status: [], clips: [], missing0: glove ? glove.parser.missing : 0 };
-  logging = true; $("log").textContent = "기록 멈추고 저장"; document.body.classList.add("recording");
-  dock.fold(); speak("기록 시작"); say("기록 중… 장갑 데이터" + (running ? "와 자세" : "") + "를 모으고 있어요.");
+  logging = true; setText("log", "stopSaveLog"); document.body.classList.add("recording");
+  dock.fold(); speak(t("startLog")); say(t(running ? "loggingGlovePose" : "loggingGlove"));
 };
 
 $("rec").onclick = () => {
@@ -1297,9 +1379,27 @@ $("rec").onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(chunks, { type: "video/webm" }));
     a.download = `swing-pose-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`; a.click();
-    $("rec").textContent = "녹화"; say("저장했어요.");
+    setText("rec", "recordVideo"); say(t("saved"));
   };
-  recorder.start(); $("rec").textContent = "녹화 멈추고 저장"; say("녹화 중…");
+  recorder.start(); setText("rec", "stopSaveVideo"); say(t("videoRecording"));
+};
+
+for (const button of document.querySelectorAll("[data-language]")) button.onclick = () => {
+  const selected = button.dataset.language;
+  try { localStorage.setItem(LANGUAGE_KEY, selected); } catch {}
+  if (selected === language) return;
+  language = selected;
+  applyLanguage();
+  listener.setLanguage(language);
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  listener.resume();
+  frameSaid = "";
+  say("");
+  if (swings.length) renderSwings(false);
+  if (r10Shots.length) renderR10();
+  if (lastImpact && glove?.parser.clock.ready()) drawImpact(lastImpact);
+  gRender();
+  qRender();
 };
 </script>
 </body>

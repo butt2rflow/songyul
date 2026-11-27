@@ -14,7 +14,16 @@ node analysis/test_gesture_js.mjs "$test_dir/swing.json"
 node analysis/test_voice_js.mjs
 ```
 
-The simulator generates glove frames and impact clips without real recordings. The swing replay compares JavaScript detections against the simulator and the Python analysis. The gesture check exercises synthetic tap, twist, shake, hold and club-selection inputs. The 30-swing replay above can report a false shake during a simulated waggle. The voice test compares the Korean command matcher in Python and JavaScript.
+The simulator generates glove frames and impact clips without real recordings. The swing replay compares JavaScript detections against the simulator and the Python analysis. The gesture check exercises synthetic tap, twist, shake, hold and club-selection inputs. The 30-swing replay above can report a false shake during a simulated waggle. The voice test compares the Korean and English matchers in Python and JavaScript and checks locale selection and spoken feedback.
+
+Regenerate the English figures from the repository root.
+
+```sh
+python analysis/plot_pose_curves.py docs/images/pose-curves.png
+python analysis/swing_eye.py --figure docs/images/swing-sim.png
+```
+
+The swing simulation figure is generated directly from the synthetic sessions.
 
 For your own recordings:
 

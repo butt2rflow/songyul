@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="language">"언어"</string>
+    <string name="guide">"Garmin Golf 앱 → Manage Connection 에 입력:"</string>
+    <string name="host_local">"  Host  127.0.0.1   (이 폰에서 Garmin 앱을 쓸 때)"</string>
+    <string name="page_address">"장갑 페이지: http://127.0.0.1:%1$d  (아래 버튼, 이 앱이 띄워 줘요)"</string>
+    <string name="shot_file">"샷 파일: Download/R10Bridge/r10-shots-%1$s.jsonl"</string>
+    <string name="open_page">"장갑 페이지 열기 (Chrome)"</string>
+    <string name="start_receiver">"수신 켜기"</string>
+    <string name="stop_receiver">"수신 끄기"</string>
+    <string name="state">"상태: %1$s   ·   샷 %2$d개"</string>
+    <string name="no_log">"(아직 기록 없음)"</string>
+    <string name="status_off">"꺼짐"</string>
+    <string name="status_background_off">"꺼짐 (휴대폰이 앱을 정리했어요)"</string>
+    <string name="background_failed">"백그라운드에서 다시 켤 수 없어요: 앱을 열고 수신 켜기를 눌러 주세요"</string>
+    <string name="receiver_off">"수신기 꺼짐"</string>
+    <string name="e6_waiting">"E6 수신 대기 중 (포트 %1$s)"</string>
+    <string name="e6_error">"E6 수신기 오류: %1$s"</string>
+    <string name="garmin_connected">"Garmin 앱 연결됨 %1$s"</string>
+    <string name="garmin_disconnected">"Garmin 앱 연결 끊김 %1$s"</string>
+    <string name="shot_description">"샷 %1$d · 볼 %2$.1f mph · 방향 %3$+.1f° · 스핀축 %4$+.1f° · 클럽 %5$.1f · 패스 %6$+.1f° · 페이스 %7$+.1f°"</string>
+    <string name="notification_channel">"R10 수신"</string>
+    <string name="notification_title">"R10 Bridge 켜짐"</string>
+    <string name="notification_body">"Garmin 앱 → 포트 %1$d · 장갑 페이지 → http://127.0.0.1:%2$d"</string>
+</resources>

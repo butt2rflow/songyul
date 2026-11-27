@@ -5,8 +5,8 @@ Works on any dict/npz with the host/stream.py keys: t, hand_gyro, hand_acc, arm_
   run on simulation:  python3 analysis/swing_eye.py
   run on a recording: python3 analysis/swing_eye.py take.npz
 """
+import argparse
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -134,7 +134,7 @@ def collect(sessions):
     return rows
 
 
-def simulate():
+def simulate(figure_path=None):
     from sim_swing import KINDS, make_session, person
     rng = np.random.default_rng(7)
     me = person(np.random.default_rng(100))
@@ -197,40 +197,48 @@ def simulate():
                 E[name + "_address"].append(float(abs(b[0] - bt[0]))); E[name + "_impact"].append(float(abs(b[i0] - bt[i0])))
     R["wrist_angle_err_deg"] = {k: float(np.median(v)) for k, v in E.items()}
     R["saturated_swings"] = f"{sum(r['metrics']['saturated'] > 0 for r in ref + te2 + tef)} of {len(ref + te2 + tef)}"
-    (ROOT / "results").mkdir(exist_ok=True)
-    json.dump(R, open(ROOT / "results/swing_sim.json", "w"), indent=1)
+    if figure_path is None:
+        (ROOT / "results").mkdir(exist_ok=True)
+        (ROOT / "results/swing_sim.json").write_text(json.dumps(R, indent=1), encoding="utf-8")
     print(json.dumps(R, indent=1))
-    figure(ref + te2, R)
+    figure(ref + te2, R, figure_path or ROOT / "figs/swing-sim.png")
 
 
-def figure(rows, R):
+def figure(rows, R, output):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.family": ["Noto Sans CJK KR", "DejaVu Sans"], "font.size": 11, "figure.facecolor": "#fbfaf7"})
+    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11, "figure.facecolor": "#fbfaf7"})
     C = {"good": "#2e7d4f", "early": "#c0392b", "decel": "#a86a00"}
-    L = {"good": "좋은 스윙", "early": "일찍 풀림", "decel": "임팩트 감속"}
-    fig, ax = plt.subplots(1, 3, figsize=(16, 4.8), gridspec_kw=dict(width_ratios=[1.3, 1, 0.8], wspace=0.3))
+    L = {"good": "Good swing", "early": "Early release", "decel": "Slowing into impact"}
+    fig, ax = plt.subplots(1, 3, figsize=(15, 4.5), layout="constrained",
+                          gridspec_kw={"width_ratios": [1.2, 1, 0.9]})
     for k in ("good", "early"):
         r = next(x for x in rows if x["kind"] == k)
-        ax[0].plot(r["tt"], r["beta"], color=C[k], lw=2.2, label=f"{L[k]}: 손목 젖힘 각도")
-    ax[0].axvline(0, color="#555", lw=1, ls="--"); ax[0].text(0.01, ax[0].get_ylim()[1] * 0.9, "임팩트", fontsize=10, color="#555")
-    ax[0].set_xlim(-1.6, 0.35); ax[0].set_xlabel("임팩트 기준 시간 (s)"); ax[0].set_ylabel("오른손목 젖힘 (°)")
-    ax[0].set_title("장갑이 계산한 오른손목 각도", loc="left", weight="bold"); ax[0].legend(fontsize=9, loc="lower left")
+        ax[0].plot(r["tt"], r["beta"], color=C[k], lw=2.2, label=L[k])
+    ax[0].axvline(0, color="#555", lw=1, ls="--")
+    ax[0].text(0.02, 0.93, "Impact", transform=ax[0].get_xaxis_transform(), fontsize=10, color="#555")
+    ax[0].set(xlim=(-1.6, 0.35), xlabel="Time from impact (s)", ylabel="Trail wrist extension (°)")
+    ax[0].set_title("Wrist angle from the glove", loc="left", weight="bold")
+    ax[0].legend(fontsize=9, loc="lower left")
     for k in C:
         rr = [x for x in rows if x["kind"] == k]
         ax[1].scatter([x["metrics"]["release_ms"] for x in rr], [x["metrics"]["arm_dps_impact"] for x in rr], s=22, color=C[k], label=L[k], alpha=.8)
-    ax[1].set_xlabel("손목이 반쯤 풀린 시점 (임팩트 전 ms)"); ax[1].set_ylabel("임팩트 순간 아래팔 회전 (dps)")
-    ax[1].set_title("숫자 두 개로 본 스윙", loc="left", weight="bold"); ax[1].legend(fontsize=9)
+    ax[1].set(xlabel="Half-release timing (ms from impact)", ylabel="Forearm speed at impact (°/s)")
+    ax[1].set_title("Release timing and forearm speed", loc="left", weight="bold")
+    ax[1].legend(fontsize=9, loc="lower left")
     ks = [1, 3, 5]
-    for name, lab, ls in (("me_later", "다른 날의 나", "-"), ("friend", "다른 사람", "--")):
+    for name, lab, ls in (("me_later", "Same golfer, later session", "-"), ("friend", "Different golfer", "--")):
         ax[2].plot(ks, [R[name][k] * 100 for k in ks], ls, marker="o", color="#1f6fb2", label=lab)
-        ax[2].plot(ks, [R[name + "_raw"][k] * 100 for k in ks], ls, marker="o", color="#999", label=lab + " (정렬 없이)")
-    ax[2].set_ylim(30, 102); ax[2].set_xticks(ks); ax[2].set_xlabel("종류별 레퍼런스 스윙 수"); ax[2].set_ylabel("맞힌 비율 (%)")
-    ax[2].set_title("레퍼런스만 주면", loc="left", weight="bold"); ax[2].legend(fontsize=8.5, loc="lower right")
-    fig.suptitle("시뮬레이션 스윙으로 미리 돌려 본 장갑 분석 (실제 데이터 아님)", fontsize=13, color="#555", y=1.02)
-    (ROOT / "figs").mkdir(exist_ok=True)
-    fig.savefig(ROOT / "figs/swing-sim.png", dpi=120, bbox_inches="tight"); print(ROOT / "figs/swing-sim.png")
+        ax[2].plot(ks, [R[name + "_raw"][k] * 100 for k in ks], ls, marker="o", color="#999", label=lab + " (raw gyro)")
+    ax[2].set(ylim=(30, 102), xticks=ks, xlabel="Reference swings per type", ylabel="Accuracy (%)")
+    ax[2].set_title("Swing classification accuracy", loc="left", weight="bold")
+    ax[2].legend(fontsize=8.5, loc="lower right")
+    fig.suptitle("Glove swing analysis with simulated data", fontsize=15, weight="bold")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=120)
+    plt.close(fig)
+    print(output)
 
 
 def real(path):
@@ -243,5 +251,13 @@ def real(path):
 
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(Path(__file__).parent))
-    real(sys.argv[1]) if len(sys.argv) > 1 else simulate()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("recording", nargs="?", type=Path)
+    parser.add_argument("--figure", type=Path, help="write the simulation figure to this path")
+    args = parser.parse_args()
+    if args.recording:
+        if args.figure:
+            parser.error("--figure requires simulated data")
+        real(args.recording)
+    else:
+        simulate(args.figure)

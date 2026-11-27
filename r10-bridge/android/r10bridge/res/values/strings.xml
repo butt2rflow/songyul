@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">"R10 Bridge"</string>
+    <string name="language">"Language"</string>
+    <string name="ko">"KO"</string>
+    <string name="en">"EN"</string>
+    <string name="guide">"In Garmin Golf, enter under Manage Connection:"</string>
+    <string name="host_local">"  Host  127.0.0.1   (Garmin Golf on this phone)"</string>
+    <string name="page_address">"Glove page: http://127.0.0.1:%1$d (served by this app)"</string>
+    <string name="shot_file">"Shot file: Download/R10Bridge/r10-shots-%1$s.jsonl"</string>
+    <string name="open_page">"Open glove page (Chrome)"</string>
+    <string name="start_receiver">"Start receiver"</string>
+    <string name="stop_receiver">"Stop receiver"</string>
+    <string name="state">"Status: %1$s   ·   Shots: %2$d"</string>
+    <string name="no_log">"(No activity yet)"</string>
+    <string name="status_off">"Off"</string>
+    <string name="status_background_off">"Off (Android closed the app)"</string>
+    <string name="background_failed">"Could not restart in the background. Open the app and tap Start receiver."</string>
+    <string name="receiver_off">"Receiver stopped"</string>
+    <string name="e6_waiting">"Waiting for E6 (port %1$s)"</string>
+    <string name="e6_error">"E6 receiver error: %1$s"</string>
+    <string name="garmin_connected">"Garmin app connected %1$s"</string>
+    <string name="garmin_disconnected">"Garmin app disconnected %1$s"</string>
+    <string name="shot_description">"Shot %1$d · ball %2$.1f mph · launch %3$+.1f° · spin axis %4$+.1f° · club %5$.1f · path %6$+.1f° · face %7$+.1f°"</string>
+    <string name="notification_channel">"R10 receiver"</string>
+    <string name="notification_title">"R10 Bridge is on"</string>
+    <string name="notification_body">"Garmin app → port %1$d · glove page → http://127.0.0.1:%2$d"</string>
+</resources>

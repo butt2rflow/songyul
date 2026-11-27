@@ -22,9 +22,10 @@ assets=build/assets
 rm -r -- "$classes" "$dex" "$assets" 2>/dev/null || true
 mkdir -p "$classes" "$dex" "$assets/web"
 cp "$PAGE"/*.html "$PAGE"/*.js "$PAGE"/*.json build/assets/web/
-"$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml -A build/assets
+"$BT/aapt2" compile --dir res -o build/resources.zip
+"$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml -A build/assets --java build build/resources.zip
 javac -source 8 -target 8 -XDstringConcat=inline -Xlint:-options -encoding UTF-8 -classpath "$JAR" -d build/classes \
-  $(find src -name '*.java')
+  build/org/songyul/r10bridge/R.java $(find src -name '*.java')
 "$BT/d8" --min-api 26 --lib "$JAR" --output build/dex $(find build/classes -name '*.class')
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q ../unsigned.apk classes.dex)

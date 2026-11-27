@@ -27,6 +27,7 @@ BUILTIN = {"label_last": "label the last swing (args: label, add_reference)", "u
            "set_swing": "set the swing type for every following swing until changed (args: swing)",
            "set_player": "set who is swinging (args: name); every following swing is saved under that player",
            "speak_club": "read the current player, club and swing type aloud",
+           "listen": "keep listening for voice commands",
            "note": "save free speech as a note (used when nothing matches)"}
 
 
@@ -34,43 +35,62 @@ def norm(s):
     return re.sub(r"[\s\.,!?~'\"]+", "", s.lower())
 
 
+NUMBERS = dict(zip(("one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+                    "fifty two", "fifty six", "sixty"), (*range(1, 10), 52, 56, 60)))
+NUMBER_WORDS = re.compile(r"\b(" + "|".join(NUMBERS) + r")\b")
+
+
+def english_words(s):
+    words = re.sub(r"[^a-z0-9]+", " ", s.lower().replace("'", "").replace("’", "").replace("°", " degrees")).strip()
+    return NUMBER_WORDS.sub(lambda m: str(NUMBERS[m[0]]), words)
+
+
 class VoiceCommands:
-    def __init__(self, path=HERE / "commands.example.yaml", model="openai/whisper-small"):
-        cfg = yaml.safe_load(open(path, encoding="utf-8"))
-        self.min_score, self.commands, self.model_name, self._asr = cfg.get("min_score", 0.75), cfg["commands"], model, None
-        self.hint = cfg.get("hint", ", ".join(p for c in self.commands for p in c["say"])) if cfg.get("use_hint", True) else ""
+    def __init__(self, path=HERE / "commands.example.yaml", model="openai/whisper-small", language="ko"):
+        cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        self.english = language == "en"
+        self.norm = english_words if self.english else norm
+        self.whisper_language = "english" if self.english else "korean"
+        self.min_score, self.model_name, self._asr = cfg.get("min_score", 0.75), model, None
+
+        def select(value, empty):
+            if isinstance(value, dict):
+                return value.get(language, empty)
+            return empty if self.english else value
+
+        def rows(key):
+            return [{**c, "say": say} for c in cfg.get(key, []) if (say := select(c.get("say", []), []))]
+
+        self.prefixes, self.players, self.commands = rows("prefixes"), rows("players"), rows("commands")
+        self.hint = select(cfg.get("hint", {}), ", ".join(p for c in self.commands for p in c["say"])) if cfg.get("use_hint", True) else ""
         self._prompt = None
-        self.prefixes, self.players = cfg.get("prefixes", []), cfg.get("players", [])
-        for pl in self.players:  # known players also switch with "<name> 차례" ("친구 차례")
-            self.commands.append({"say": [f"{ph} 차례" for ph in pl["say"] if not ph.endswith("차례")],
-                                  "action": "set_player", "args": {"name": pl["name"]}})
+        for pl in self.players:
+            if self.english:
+                say = [f"{ph}'s turn" for ph in pl["say"] if ph.lower() not in ("me", "myself", "my turn")]
+            else:
+                say = [f"{ph} 차례" for ph in pl["say"] if not ph.endswith("차례")]
+            self.commands.append({"say": say, "action": "set_player", "args": {"name": pl["name"]}})
         for c in self.commands:
             if c["action"] not in BUILTIN:
                 print(f"warning: unknown action '{c['action']}' (the app must handle it)", file=sys.stderr)
 
     def match(self, text):
-        t = norm(text)
+        t = self.norm(text)
         if not t:
             return None
         for c in self.prefixes:  # "플레이어 게스트", "라벨 템포 좋음": the words after the prefix become the value
             for ph in c["say"]:
-                i = t.find(norm(ph))
-                if i >= 0 and len(t) > i + len(norm(ph)):
-                    rest = self._after(text, ph)
-                    if not rest or any(norm(f) == norm(rest) for c2 in self.commands for f in c2["say"]):
-                        continue  # empty, or the "value" is itself a command ("선수 7번"): let the fixed phrases decide
-                    if c["arg"] == "name":  # snap to a known player when close (speech-to-text often bends names)
-                        rest = self._player(rest)
-                    return {"action": c["action"], "args": {**c.get("args", {}), c["arg"]: rest}, "said": ph, "score": 1.0, "text": text}
+                rest = self._prefix_value(text, t, ph)
+                if not rest or any(self.norm(f) == self.norm(rest) for c2 in self.commands for f in c2["say"]):
+                    continue  # empty, or the value is itself a command: let the fixed phrases decide
+                if c["arg"] == "name":
+                    rest = self._player(rest)
+                return {"action": c["action"], "args": {**c.get("args", {}), c["arg"]: rest}, "said": ph, "score": 1.0, "text": text}
         best = None
         for c in self.commands:
             for phrase in c["say"]:
-                p = norm(phrase)
-                if p in t:  # the phrase appears inside what was said: strong match, longer phrases win
-                    score = 1.0 + len(p) / 100
-                else:       # otherwise the best fuzzy match of the phrase against any same-length piece of the text
-                    n = len(p)
-                    score = max((difflib.SequenceMatcher(None, p, t[i:i + n]).ratio() for i in range(max(1, len(t) - n + 1))), default=0)
+                p = self.norm(phrase)
+                score = 1.0 + len(p) / 100 if self._exact(t, p) else self._fuzzy(t, p)
                 if not best or score > best["score"]:
                     best = {"action": c["action"], "args": c.get("args", {}), "said": phrase, "score": round(score, 3), "text": text}
         if best and best["score"] >= self.min_score:
@@ -78,12 +98,35 @@ class VoiceCommands:
             # appears word for word in what was said (no fuzzy match here, so a stray syllable can't change a setting).
             pair = {"set_club": "set_swing", "set_swing": "set_club"}.get(best["action"])
             if pair:
-                hits = [(len(norm(ph)), c) for c in self.commands if c["action"] == pair for ph in c["say"] if norm(ph) in t]
+                hits = [(len(p), c) for c in self.commands if c["action"] == pair
+                        for ph in c["say"] if self._exact(t, p := self.norm(ph))]
                 if hits:
                     c = max(hits, key=lambda h: h[0])[1]
                     best["also"] = [{"action": c["action"], "args": c.get("args", {})}]
             return best
         return {"action": "note", "args": {}, "said": None, "score": best["score"] if best else 0, "text": text}
+
+    def _exact(self, text, phrase):
+        return f" {phrase} " in f" {text} " if self.english else phrase in text
+
+    def _fuzzy(self, text, phrase):
+        if self.english:
+            words, n, number = text.split(), len(phrase.split()), re.findall(r"\d+", phrase)
+            parts = (" ".join(words[i:i + n]) for i in range(len(words) - n + 1))
+            parts = (part for part in parts if re.findall(r"\d+", part) == number)
+        else:
+            n = len(phrase)
+            parts = (text[i:i + n] for i in range(max(1, len(text) - n + 1)))
+        return max((difflib.SequenceMatcher(None, phrase, part).ratio() for part in parts), default=0)
+
+    def _prefix_value(self, text, normalized, phrase):
+        if self.english:
+            prefix = r"\s+".join(re.escape(word) for word in phrase.split())
+            hit = re.match(prefix + r"(?=[\s:,.!?])", text.strip(), re.IGNORECASE)
+            return text.strip()[hit.end():].lstrip(" \t\r\n:,.!?~").rstrip(" \t\r\n.,!?~") if hit else ""
+        p = norm(phrase)
+        i = normalized.find(p)
+        return self._after(text, phrase) if i >= 0 and len(normalized) > i + len(p) else ""
 
     @staticmethod
     def _after(text, prefix):  # the original words after the prefix (spaces kept), trailing particles trimmed
@@ -99,10 +142,10 @@ class VoiceCommands:
         return re.sub(r"(으로|로|이요|요|입니다|이야|야)$", "", rest).strip()
 
     def _player(self, name):
-        n, best = norm(name), (0, name)
+        n, best = self.norm(name), (0, name)
         for pl in self.players:
             for ph in pl["say"]:
-                r = difflib.SequenceMatcher(None, norm(ph), n).ratio()
+                r = difflib.SequenceMatcher(None, self.norm(ph), n).ratio()
                 if r > best[0]:
                     best = (r, pl["name"])
         return best[1] if best[0] >= self.min_score else name
@@ -126,7 +169,7 @@ class VoiceCommands:
             return ""
         if rate != 16000:  # Whisper wants 16 kHz
             x = np.interp(np.arange(0, len(x), rate / 16000), np.arange(len(x)), x).astype(np.float32)
-        gk = {"language": "korean", "task": "transcribe", "max_new_tokens": 40}  # commands are short
+        gk = {"language": self.whisper_language, "task": "transcribe", "max_new_tokens": 40}  # commands are short
         if self.hint:  # tell Whisper which words to expect: short commands are much easier to catch
             if self._prompt is None:
                 ids = self._asr.tokenizer.get_prompt_ids(self.hint, return_tensors="pt")
@@ -157,8 +200,9 @@ def main():
     ap.add_argument("--commands", default=str(HERE / "commands.example.yaml"))
     ap.add_argument("--text"); ap.add_argument("--wav"); ap.add_argument("--list", action="store_true")
     ap.add_argument("--model", default="openai/whisper-small")
+    ap.add_argument("--language", choices=("ko", "en"), default="ko", help="command and Whisper language (default: ko)")
     a = ap.parse_args()
-    vc = VoiceCommands(a.commands, a.model)
+    vc = VoiceCommands(a.commands, a.model, language=a.language)
     if a.list:
         for c in vc.commands:
             print(f"{', '.join(c['say']):30} -> {c['action']} {c.get('args', '')}")

@@ -10,6 +10,8 @@
 //   arm_dps_imp, hand_dps_peak, hand_peak_ms, saturated (samples at the gyro limit; sat_hand + sat_arm)
 // Times are glove time (t_us), so missing frames or a 240 vs 400 Hz stream don't change the numbers.
 
+import { text } from "./strings.js";
+
 export const SWING_THRESH = 400, PRE_S = 2.2, POST_S = 0.4, GAP_S = 3.0, WAIT_CLIP_S = 2.5;
 
 function gauss(x, sigma) {             // scipy.ndimage.gaussian_filter1d, mode "reflect", truncate 4
@@ -181,10 +183,11 @@ export class SwingDetector {
   }
 }
 
-// One short spoken line for a swing (Korean, plain numbers; no judgement until real swings give references).
-export function swingLine(s) {
-  if (s.hand_only || Number.isNaN(s.release_ms)) return `템포 ${s.tempo.toFixed(1)} 대 1.`;
+// One short spoken line for a swing, in plain numbers.
+export function swingLine(s, language = "ko") {
+  const tempo = text("tempoSpoken", language, s.tempo.toFixed(1));
+  if (s.hand_only || Number.isNaN(s.release_ms)) return tempo;
   const rel = Math.round(-s.release_ms);
-  const when = rel > 5 ? `임팩트 ${rel}밀리초 전` : rel < -5 ? `임팩트 ${-rel}밀리초 뒤` : "임팩트 때";
-  return `템포 ${s.tempo.toFixed(1)} 대 1. 손목은 ${when} 풀렸어요.`;
+  const when = text(rel > 5 ? "beforeImpact" : rel < -5 ? "afterImpact" : "atImpact", language, Math.abs(rel));
+  return tempo + " " + text("releaseSpoken", language, when);
 }

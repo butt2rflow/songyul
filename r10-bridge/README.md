@@ -7,8 +7,10 @@ R10 Bridge is unofficial and is not affiliated with Garmin or E6/TruGolf. It use
 Build the APK with `./r10-bridge/android/r10bridge/build.sh` from the repository root. The script needs a JDK, zip, Android SDK Platform 34 and Build Tools 34.0.0. Set `ANDROID_HOME` if the SDK is somewhere other than `/usr/lib/android-sdk`. The build bundles the sibling Songyul phone page and signs locally with a debug key.
 
 1. Install the generated `r10-bridge/android/r10bridge/build/r10bridge.apk` on an Android device (API 26 or later).
-2. In R10 Bridge, start the receiver (**수신 켜기**). In Garmin Golf, select the E6 PC connection and set the host and port above. Start a Garmin Golf session.
-3. Open the glove page from R10 Bridge in Android Chrome at `http://127.0.0.1:8765/`. Connect the glove and enable **R10 결과 받기**. Each incoming shot is paired with a preceding swing when the timestamps match.
+2. In R10 Bridge, tap **Start receiver** (**수신 켜기**). In Garmin Golf, select the E6 PC connection and set the host and port above. Start a Garmin Golf session.
+3. Open the glove page from R10 Bridge in Android Chrome at `http://127.0.0.1:8765/`. Connect the glove and enable **Receive R10 shots** (**R10 결과 받기**). Each incoming shot is paired with a preceding swing when the timestamps match.
+
+The Android app starts in Korean when the device language is Korean and in English otherwise. Use **KO / EN** in the app to save a preference. The glove page remembers its own language setting.
 
 The Android WebSocket and page server use loopback. The shot receiver also listens on the local network. Use a trusted network. Android adds shot JSONL and raw message recordings to the phone's local storage. Review those files before sharing.
 

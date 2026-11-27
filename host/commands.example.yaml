@@ -5,126 +5,213 @@ min_score: 0.75
 # Whisper prompt: a SHORT list of the words you expect. The default (every phrase below) is ~540 tokens, more than
 # Whisper allows, and a cut-off list makes Whisper repeat it. Tested 2026-10-22: with this hint "7번 하프" came out
 # right; without one, "7번 하.." / "7번 하부체".
-hint: "칠번, 7번 아이언, 드라이버, 우드, 하이브리드, 피칭, 웨지, 퍼터, 하프, 풀스윙, 쓰리쿼터, 칩샷, 굿샷, 뒤땅, 뒷땅, 탑볼"
+hint:
+  ko: "칠번, 7번 아이언, 드라이버, 우드, 하이브리드, 피칭, 웨지, 퍼터, 하프, 풀스윙, 쓰리쿼터, 칩샷, 굿샷, 뒤땅, 뒷땅, 탑볼"
+  en: "seven iron, driver, fairway wood, hybrid, pitching wedge, half swing, full swing, good shot, fat shot, topped it, start listening"
 # Free values: "<prefix> <words>" -> the words become the value. Checked before the fixed phrases below.
 prefixes:
-  - say: ["플레이어", "선수"]
+  - say:
+      ko: ["플레이어", "선수"]
+      en: ["switch player to", "player", "golfer"]
     action: set_player
     arg: name
-  - say: ["라벨", "레이블", "태그"]
+  - say:
+      ko: ["라벨", "레이블", "태그"]
+      en: ["label", "tag"]
     action: label_last
     arg: label
 # Known players: what speech-to-text may write -> the name saved with each swing. Add your own (keep real names out of shared copies).
 players:
   - name: me
-    say: ["나", "본인", "내 차례"]
+    say:
+      ko: ["나", "본인", "내 차례"]
+      en: ["me", "myself", "my turn"]
   - name: friend1
-    say: ["친구", "친구 일"]
+    say:
+      ko: ["친구", "친구 일"]
+      en: ["friend", "friend one"]
 commands:
-  - say: ["좋은 샷", "굿샷", "나이스샷"]
+  - say:
+      ko: ["좋은 샷", "굿샷", "나이스샷"]
+      en: ["good shot", "nice shot", "great shot"]
     action: label_last
     args: {label: good, add_reference: true}
-  - say: ["슬라이스"]
+  - say:
+      ko: ["슬라이스"]
+      en: ["slice", "that was a slice"]
     action: label_last
     args: {label: slice}
-  - say: ["훅"]
+  - say:
+      ko: ["훅"]
+      en: ["hook", "that was a hook"]
     action: label_last
     args: {label: hook}
-  - say: ["뒤땅", "뒷땅", "뒤탕", "뒷탕", "땅 먼저", "땅부터 쳤어"]   # Chrome often writes 뒷땅 (2026-10-27: "뒤땅" came back as unknown)
+  - say:
+      ko: ["뒤땅", "뒷땅", "뒤탕", "뒷탕", "땅 먼저", "땅부터 쳤어"]   # Chrome often writes 뒷땅 (2026-10-27: "뒤땅" came back as unknown)
+      en: ["fat shot", "last one was fat", "hit it fat", "hit it heavy", "ground first", "hit the ground first"]
     action: label_last
     args: {label: fat}
-  - say: ["탑볼", "얇게 맞았어"]
+  - say:
+      ko: ["탑볼", "얇게 맞았어"]
+      en: ["topped it", "hit it thin", "thin shot"]
     action: label_last
     args: {label: thin}
-  - say: ["내 차례", "제 차례"]
+  - say:
+      ko: ["내 차례", "제 차례"]
+      en: ["my turn", "I'm up"]
     action: set_player
     args: {name: me}
-  - say: ["빈 스윙", "연습 스윙"]
+  - say:
+      ko: ["빈 스윙", "연습 스윙"]
+      en: ["practice swing", "air swing"]
     action: label_last
     args: {label: practice}
-  - say: ["정렬 시작", "보정 시작", "정렬 모드"]
+  - say:
+      ko: ["정렬 시작", "보정 시작", "정렬 모드"]
+      en: ["start alignment", "start calibration", "calibration mode"]
     action: calibrate
     args: {seconds: 12}
-  - say: ["기록 시작", "시작"]
+  - say:
+      ko: ["기록 시작", "시작"]
+      en: ["start recording", "start logging"]
     action: start
-  - say: ["기록 그만", "그만", "정지"]
+  - say:
+      ko: ["기록 그만", "그만", "정지"]
+      en: ["stop recording", "stop logging", "stop"]
     action: stop
-  - say: ["방금 거 어때", "방금 스윙"]
+  - say:
+      ko: ["방금 거 어때", "방금 스윙"]
+      en: ["how was that", "last swing"]
     action: speak_last
-  - say: ["오늘 어때", "오늘 요약"]
+  - say:
+      ko: ["오늘 어때", "오늘 요약"]
+      en: ["how am I doing today", "today's summary", "session summary"]
     action: speak_summary
-  - say: ["배터리"]
+  - say:
+      ko: ["배터리"]
+      en: ["battery", "battery level"]
     action: speak_battery
-  - say: ["취소", "방금 거 지워"]
+  - say:
+      ko: ["취소", "방금 거 지워"]
+      en: ["cancel", "undo the last label"]
     action: undo_label
   # Club: say it once, and every following swing is saved with that club until you change it.
   # Each club keeps its own labels and references (a driver swing is not compared with a wedge swing).
-  - say: ["드라이버", "원우드"]
+  - say:
+      ko: ["드라이버", "원우드"]
+      en: ["driver", "one wood"]
     action: set_club
     args: {club: driver}
-  - say: ["3번 우드", "삼번 우드", "스푼", "쓰리 우드"]
+  - say:
+      ko: ["3번 우드", "삼번 우드", "스푼", "쓰리 우드"]
+      en: ["three wood", "number three wood"]
     action: set_club
     args: {club: wood3}
-  - say: ["5번 우드", "오번 우드", "파이브 우드"]
+  - say:
+      ko: ["5번 우드", "오번 우드", "파이브 우드"]
+      en: ["five wood", "number five wood"]
     action: set_club
     args: {club: wood5}
-  - say: ["유틸", "유틸리티", "하이브리드"]
+  - say:
+      ko: ["유틸", "유틸리티", "하이브리드"]
+      en: ["hybrid", "utility club", "rescue club"]
     action: set_club
     args: {club: hybrid}
-  - say: ["4번", "4번 아이언", "사번 아이언", "사번", "포 아이언"]
+  - say:
+      ko: ["4번", "4번 아이언", "사번 아이언", "사번", "포 아이언"]
+      en: ["four iron", "number four", "iron four"]
     action: set_club
     args: {club: iron4}
-  - say: ["5번", "5번 아이언", "오번 아이언", "오번", "파이브 아이언"]
+  - say:
+      ko: ["5번", "5번 아이언", "오번 아이언", "오번", "파이브 아이언"]
+      en: ["five iron", "number five", "iron five"]
     action: set_club
     args: {club: iron5}
-  - say: ["6번", "6번 아이언", "육번 아이언", "육번", "식스 아이언"]
+  - say:
+      ko: ["6번", "6번 아이언", "육번 아이언", "육번", "식스 아이언"]
+      en: ["six iron", "number six", "iron six"]
     action: set_club
     args: {club: iron6}
-  - say: ["7번", "7번 아이언", "칠번 아이언", "칠번", "세븐 아이언"]
+  - say:
+      ko: ["7번", "7번 아이언", "칠번 아이언", "칠번", "세븐 아이언"]
+      en: ["seven iron", "number seven", "iron seven"]
     action: set_club
     args: {club: iron7}
-  - say: ["8번", "8번 아이언", "팔번 아이언", "팔번", "에잇 아이언"]
+  - say:
+      ko: ["8번", "8번 아이언", "팔번 아이언", "팔번", "에잇 아이언"]
+      en: ["eight iron", "number eight", "iron eight"]
     action: set_club
     args: {club: iron8}
-  - say: ["9번", "9번 아이언", "구번 아이언", "구번", "나인 아이언"]
+  - say:
+      ko: ["9번", "9번 아이언", "구번 아이언", "구번", "나인 아이언"]
+      en: ["nine iron", "number nine", "iron nine"]
     action: set_club
     args: {club: iron9}
-  - say: ["피칭", "피칭 웨지", "피웨지"]
+  - say:
+      ko: ["피칭", "피칭 웨지", "피웨지"]
+      en: ["pitching wedge", "P W"]
     action: set_club
     args: {club: pw}
-  - say: ["갭 웨지", "52도", "어프로치 웨지"]
+  - say:
+      ko: ["갭 웨지", "52도", "어프로치 웨지"]
+      en: ["gap wedge", "fifty two degrees", "approach wedge", "fifty two degree wedge"]
     action: set_club
     args: {club: gw}
-  - say: ["샌드", "샌드 웨지", "56도"]
+  - say:
+      ko: ["샌드", "샌드 웨지", "56도"]
+      en: ["sand wedge", "fifty six degrees", "fifty six degree wedge"]
     action: set_club
     args: {club: sw}
-  - say: ["로브 웨지", "60도"]
+  - say:
+      ko: ["로브 웨지", "60도"]
+      en: ["lob wedge", "sixty degrees", "sixty degree wedge"]
     action: set_club
     args: {club: lw}
-  - say: ["퍼터"]
+  - say:
+      ko: ["퍼터"]
+      en: ["putter"]
     action: set_club
     args: {club: putter}
   # Swing type: same idea as the club. Practice swings stay a per-swing label ("빈 스윙" above).
-  - say: ["풀스윙", "풀 스윙", "풀샷"]
+  - say:
+      ko: ["풀스윙", "풀 스윙", "풀샷"]
+      en: ["full swing", "full shot"]
     action: set_swing
     args: {swing: full}
-  - say: ["쓰리쿼터", "쓰리쿼터 스윙", "4분의 3"]
+  - say:
+      ko: ["쓰리쿼터", "쓰리쿼터 스윙", "4분의 3"]
+      en: ["three quarter swing", "three quarters", "3/4 swing"]
     action: set_swing
     args: {swing: three_quarter}
-  - say: ["하프 스윙", "하프스윙", "하프샷", "하프"]
+  - say:
+      ko: ["하프 스윙", "하프스윙", "하프샷", "하프"]
+      en: ["half swing", "half shot", "half"]
     action: set_swing
     args: {swing: half}
-  - say: ["칩샷", "칩 샷", "칩핑"]
+  - say:
+      ko: ["칩샷", "칩 샷", "칩핑"]
+      en: ["chip shot", "chipping"]
     action: set_swing
     args: {swing: chip}
-  - say: ["피치샷", "피치 샷", "띄우는 어프로치"]
+  - say:
+      ko: ["피치샷", "피치 샷", "띄우는 어프로치"]
+      en: ["pitch shot", "high pitch"]
     action: set_swing
     args: {swing: pitch}
-  - say: ["펀치샷", "펀치 샷", "낮게 치기"]
+  - say:
+      ko: ["펀치샷", "펀치 샷", "낮게 치기"]
+      en: ["punch shot", "low punch", "keep it low"]
     action: set_swing
     args: {swing: punch}
-  - say: ["벙커샷", "벙커 샷", "벙커"]
+  - say:
+      ko: ["벙커샷", "벙커 샷", "벙커"]
+      en: ["bunker shot", "sand shot", "bunker"]
     action: set_swing
     args: {swing: bunker}
-  - say: ["무슨 채", "지금 무슨 채야", "채 뭐야", "지금 설정", "설정 알려줘", "누구 차례"]
+  - say:
+      ko: ["무슨 채", "지금 무슨 채야", "채 뭐야", "지금 설정", "설정 알려줘", "누구 차례"]
+      en: ["what club", "which club", "what club am I using", "current settings", "tell me my settings", "whose turn"]
     action: speak_club
+  - say:
+      en: ["start listening", "keep listening"]
+    action: listen

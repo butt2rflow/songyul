@@ -1,9 +1,20 @@
 // Voice commands on the phone: a port of host/voice.py's matcher (VoiceCommands.match).
 // The command list is commands.json, generated from the same commands.example.yaml the PC uses
-// (commands_to_json.py). Speech-to-text here is Chrome's own (Web Speech API, ko-KR), not Whisper.
+// (commands_to_json.py). Speech-to-text here is Chrome's own Web Speech API.
 // No DOM, so node can test it against voice.py (analysis/test_voice_js.mjs).
+import { speechLocale } from "./strings.js";
 
 export const norm = (s) => s.toLowerCase().replace(/[\s.,!?~'"]+/g, "");
+
+const numbers = {
+  one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9",
+  "fifty two": "52", "fifty six": "56", sixty: "60",
+};
+const englishWords = (s) => s.toLowerCase().replace(/['’]/g, "").replace(/°/g, " degrees")
+  .replace(/[^a-z0-9]+/g, " ").trim()
+  .replace(/\b(fifty two|fifty six|sixty|one|two|three|four|five|six|seven|eight|nine)\b/g, (n) => numbers[n]);
+const englishExact = (text, phrase) => ` ${text} `.includes(` ${phrase} `);
+const digits = (s) => (s.match(/\d+/g) || []).join(" ");
 
 // difflib.SequenceMatcher(None, a, b).ratio() without the junk heuristics (strings here are short)
 function longest(a, b, alo, ahi, blo, bhi) {
@@ -27,12 +38,22 @@ function matches(a, b, alo = 0, ahi = a.length, blo = 0, bhi = b.length) {
 export function ratio(a, b) { const t = a.length + b.length; return t ? (2 * matches(a, b)) / t : 1; }
 
 export class VoiceCommands {
-  constructor(cfg) {
+  constructor(cfg, language = "ko") {
+    this.english = language === "en";
+    this.norm = this.english ? englishWords : norm;
+    this.exact = this.english ? englishExact : (text, phrase) => text.includes(phrase);
     this.minScore = cfg.min_score ?? 0.75;
-    this.prefixes = cfg.prefixes || []; this.players = cfg.players || [];
-    this.commands = (cfg.commands || []).map((c) => ({ ...c }));
-    for (const pl of this.players)      // known players also switch with "<name> 차례" ("친구 차례")
-      this.commands.push({ say: pl.say.filter((p) => !p.endsWith("차례")).map((p) => `${p} 차례`), action: "set_player", args: { name: pl.name } });
+    const select = (rows) => (rows || []).map((c) => {
+      const phrases = Array.isArray(c.say) ? { ko: c.say } : c.say || {};
+      return { ...c, say: phrases[language] || [], sayKo: phrases.ko || [] };
+    }).filter((c) => c.say.length);
+    this.prefixes = select(cfg.prefixes); this.players = select(cfg.players); this.commands = select(cfg.commands);
+    for (const pl of this.players) {
+      const say = this.english
+        ? pl.say.filter((p) => !["me", "myself", "my turn"].includes(p.toLowerCase())).map((p) => `${p}'s turn`)
+        : pl.say.filter((p) => !p.endsWith("차례")).map((p) => `${p} 차례`);
+      this.commands.push({ say, action: "set_player", args: { name: pl.name } });
+    }
   }
   static after(text, prefix) {          // the original words after the prefix, trailing particles trimmed
     const flat = text.replace(/ /g, ""), want = prefix.replace(/ /g, ""), j = flat.indexOf(want);
@@ -43,38 +64,56 @@ export class VoiceCommands {
     return rest.replace(/(으로|로|이요|요|입니다|이야|야)$/, "").trim();
   }
   player(name) {
-    const n = norm(name); let best = [0, name];
-    for (const pl of this.players) for (const ph of pl.say) { const r = ratio(norm(ph), n); if (r > best[0]) best = [r, pl.name]; }
+    const n = this.norm(name); let best = [0, name];
+    for (const pl of this.players) for (const ph of pl.say) { const r = ratio(this.norm(ph), n); if (r > best[0]) best = [r, pl.name]; }
     return best[0] >= this.minScore ? best[1] : name;
   }
+  after(text, normalized, phrase) {
+    if (!this.english) {
+      const p = norm(phrase), i = normalized.indexOf(p);
+      return i >= 0 && normalized.length > i + p.length ? VoiceCommands.after(text, phrase) : "";
+    }
+    const prefix = phrase.split(/\s+/).map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+    const hit = text.trim().match(new RegExp(`^${prefix}(?=[\\s:,.!?])`, "i"));
+    return hit ? text.trim().slice(hit[0].length).replace(/^[\s:,.!?~]+|[\s.,!?~]+$/g, "") : "";
+  }
+  fuzzy(text, phrase) {
+    if (this.english) {
+      const words = text.split(" "), n = phrase.split(" ").length, number = digits(phrase);
+      let score = 0;
+      for (let i = 0; i <= words.length - n; i++) {
+        const part = words.slice(i, i + n).join(" ");
+        if (digits(part) === number) score = Math.max(score, ratio(phrase, part));
+      }
+      return score;
+    }
+    const n = phrase.length; let score = 0;
+    for (let i = 0; i < Math.max(1, text.length - n + 1); i++) score = Math.max(score, ratio(phrase, text.slice(i, i + n)));
+    return score;
+  }
   match(text) {
-    const t = norm(text);
+    const t = this.norm(text);
     if (!t) return null;
     for (const c of this.prefixes) for (const ph of c.say) {
-      const i = t.indexOf(norm(ph));
-      if (i >= 0 && t.length > i + norm(ph).length) {
-        let rest = VoiceCommands.after(text, ph);
-        if (!rest || this.commands.some((c2) => c2.say.some((f) => norm(f) === norm(rest)))) continue;
-        if (c.arg === "name") rest = this.player(rest);
-        return { action: c.action, args: { ...(c.args || {}), [c.arg]: rest }, said: ph, score: 1.0, text };
-      }
+      let rest = this.after(text, t, ph);
+      if (!rest || this.commands.some((c2) => c2.say.some((f) => this.norm(f) === this.norm(rest)))) continue;
+      if (c.arg === "name") rest = this.player(rest);
+      return { action: c.action, args: { ...(c.args || {}), [c.arg]: rest }, said: ph, score: 1.0, text };
     }
     let best = null;
     for (const c of this.commands) for (const phrase of c.say) {
-      const p = norm(phrase);
-      let score;
-      if (t.includes(p)) score = 1.0 + p.length / 100;
-      else {
-        const n = p.length; score = 0;
-        for (let i = 0; i < Math.max(1, t.length - n + 1); i++) score = Math.max(score, ratio(p, t.slice(i, i + n)));
-      }
+      const p = this.norm(phrase);
+      const score = this.exact(t, p) ? 1.0 + p.length / 100 : this.fuzzy(t, p);
       if (!best || score > best.score) best = { action: c.action, args: c.args || {}, said: phrase, score: Math.round(score * 1000) / 1000, text, cmd: c };
     }
     if (best && best.score >= this.minScore) {
       const pair = { set_club: "set_swing", set_swing: "set_club" }[best.action];
       if (pair) {
         let hit = null;
-        for (const c of this.commands) if (c.action === pair) for (const ph of c.say) if (t.includes(norm(ph)) && (!hit || norm(ph).length > hit[0])) hit = [norm(ph).length, c];
+        for (const c of this.commands) if (c.action === pair) for (const ph of c.say) {
+          const p = this.norm(ph);
+          if (this.exact(t, p) && (!hit || p.length > hit[0])) hit = [p.length, c];
+        }
         if (hit) best.also = [{ action: hit[1].action, args: hit[1].args || {}, cmd: hit[1] }];
       }
       return best;
@@ -86,12 +125,12 @@ export class VoiceCommands {
 // Web Speech wrapper: push to talk (listenOnce) or keep listening (setContinuous). Pauses while the phone speaks, so
 // it doesn't hear its own reply. onText(alternatives[]) gets Chrome's top guesses for each finished phrase.
 export class Listener {
-  constructor(onText, onState) {
+  constructor(onText, onState, language = "ko") {
     const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
     this.ok = !!SR; this.onText = onText; this.onState = onState || (() => {}); this.cont = false; this.on = false; this.paused = false;
     if (!SR) return;
     const r = new SR(); this.r = r;
-    r.lang = "ko-KR"; r.interimResults = false; r.maxAlternatives = 3; r.continuous = false;
+    this.setLanguage(language); r.interimResults = false; r.maxAlternatives = 3; r.continuous = false;
     r.onresult = (e) => {
       const res = e.results[e.results.length - 1];
       if (res && res.isFinal) this.onText([...res].map((x) => x.transcript));
@@ -102,7 +141,12 @@ export class Listener {
       if (this.cont && !this.paused) setTimeout(() => this.start(), 250); else this.onState("idle");
     };
   }
-  start() { if (!this.ok || this.on) return; try { this.r.start(); this.on = true; this.onState("listening"); } catch (e) { this.onState("error", e.message); } }
+  setLanguage(language) {
+    if (!this.ok || this.r.lang === speechLocale(language)) return;
+    this.r.lang = speechLocale(language);
+    if (this.on) this.r.abort();
+  }
+  start() { if (!this.ok || this.on || this.paused) return; try { this.r.start(); this.on = true; this.onState("listening"); } catch (e) { this.onState("error", e.message); } }
   listenOnce() { this.cont = false; this.start(); }
   setContinuous(v) { this.cont = v; if (v) this.start(); else if (this.on) this.r.stop(); }
   pause() { this.paused = true; if (this.on) this.r.abort(); }

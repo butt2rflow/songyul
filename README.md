@@ -47,16 +47,16 @@ Two IMUs track the hand and forearm. The onboard mic captures impact sound. The 
 **Pose from video** (for comparison with the glove).
 
 ![Pose frames through a swing](docs/images/pose-frames.png)
-![Swing curves from pose keypoints (Korean labels)](docs/images/pose-curves.png)
-![Simulated glove readings (Korean labels)](docs/images/swing-sim.png)
+![Swing curves from pose keypoints (Korean labels; English version will be re-plotted from the real pose output)](docs/images/pose-curves.png)
+![Simulated glove readings](docs/images/swing-sim.png)
 
 ## Phone page
 
-Korean UI for now.
+The phone page and voice commands support English and Korean. Use the **KO / EN** buttons in the settings area to change the language. The screenshots use simulated swings and impact audio.
 
-| Swing table | Voice and gesture commands | Fat-shot recorder |
+| Swing table | Voice and gesture commands | Fat-shot audio |
 |---|---|---|
-| ![Swing table: club, tempo, wrist release](docs/images/phone-swing-table.png) | ![Voice and gesture command settings](docs/images/phone-voice-gesture.png) | ![Fat-shot sound recorder](docs/images/phone-fat-shot-recorder.png) |
+| ![Swing table with club, tempo and wrist release](docs/images/phone-swing-table.png) | ![Voice and gesture command settings](docs/images/phone-voice-gesture.png) | ![Impact waveform and spectrogram with a fat-shot label](docs/images/phone-fat-shot-recorder.png) |
 
 ## Quick start
 

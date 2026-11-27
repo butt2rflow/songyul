@@ -2,6 +2,8 @@
 // The app relays the Garmin Golf app's E6 link: one {"type":"shot", shot, t_wall_ms, ball, club} per shot.
 // See r10-bridge/README.md.
 
+import { text } from "./strings.js";
+
 export const R10_URL = "ws://127.0.0.1:8765";
 
 // A shot reaches the page a little after the impact (R10 → Garmin app → bridge), and the glove's swing row
@@ -33,7 +35,21 @@ export function pairShots(swings, shots, nowMs) {
   return paired;
 }
 
-/** WebSocket client that reconnects on its own. onShot(msg, arrivalMs), onState(text, connected). */
+const BRIDGE_STATUS = new Set(["e6Waiting", "e6Error", "garminConnected", "garminDisconnected"]);
+
+function legacyStatus(message) {
+  // Older Android builds send just the Korean status string.
+  const marker = "\u0000";
+  for (const key of BRIDGE_STATUS) {
+    const [before, after] = text(key, "ko", marker).split(marker);
+    if (message.startsWith(before) && message.endsWith(after)) {
+      return [key, message.slice(before.length, message.length - after.length)];
+    }
+  }
+  return ["legacyStatus", message];
+}
+
+/** WebSocket client that reconnects on its own. onShot(msg, arrivalMs), onState(key, connected, detail). */
 export class R10Link {
   constructor(onShot, onState, url = R10_URL) {
     this.onShot = onShot; this.onState = onState; this.url = url;
@@ -43,34 +59,42 @@ export class R10Link {
   stop() {
     this.want = false; clearTimeout(this.timer);
     if (this.ws) { this.ws.onclose = null; this.ws.close(); this.ws = null; }
-    this.onState("꺼짐", false);
+    this.onState("r10Off", false);
   }
   open() {
     if (!this.want) return;
     let ws;
-    try { ws = new WebSocket(this.url); } catch (e) { this.retry("열 수 없음: " + e.message); return; }
+    try { ws = new WebSocket(this.url); } catch (e) { this.retry("r10SocketError", e.message); return; }
     this.ws = ws;
-    ws.onopen = () => this.onState("R10 Bridge 연결됨", true);
+    ws.onopen = () => this.onState("r10SocketOpen", true);
     ws.onmessage = (e) => {
       const t = performance.now();
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m.type === "shot") this.onShot(m, t);
-      else if (m.type === "status") this.onState(m.text, true);
+      else if (m.type === "status") {
+        if (BRIDGE_STATUS.has(m.code)) this.onState(m.code, true, m.detail);
+        else {
+          const [key, detail] = legacyStatus(String(m.text ?? ""));
+          this.onState(key, true, detail);
+        }
+      }
     };
-    ws.onclose = () => this.retry("R10 Bridge 앱이 꺼져 있어요 (3초 뒤 다시 시도)");
+    ws.onclose = () => this.retry("r10Retry");
     ws.onerror = () => {};
   }
-  retry(why) {
+  retry(key, detail) {
     this.ws = null;
     if (!this.want) return;
-    this.onState(why, false);
+    this.onState(key, false, detail);
     clearTimeout(this.timer); this.timer = setTimeout(() => this.open(), 3000);
   }
 }
 
 /** One spoken/printed line for a paired shot. Signs follow the R10 app: + = right of target for a right-hander. */
-export function shotLine(m) {
+export function shotLine(m, language = "ko") {
   const b = m.ball || {}, c = m.club || {};
-  const side = (v, l, r) => (v > 0.5 ? `${r} ${Math.abs(v).toFixed(0)}도` : v < -0.5 ? `${l} ${Math.abs(v).toFixed(0)}도` : "똑바로");
-  return `볼 ${(b.BallSpeed ?? 0).toFixed(0)}, 출발 ${side(b.LaunchDirection ?? 0, "왼쪽", "오른쪽")}, 패스 ${side(c.ClubAnglePath ?? 0, "아웃인", "인아웃")}`;
+  const t = (key, ...args) => text(key, language, ...args);
+  const side = (v, l, r) => Math.abs(v) > 0.5 ? t("directionDegrees", t(v > 0 ? r : l), Math.abs(v).toFixed(0)) : t("straight");
+  return t("shotSpoken", (b.BallSpeed ?? 0).toFixed(0), side(b.LaunchDirection ?? 0, "left", "right"),
+    side(c.ClubAnglePath ?? 0, "outIn", "inOut"));
 }
