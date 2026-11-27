@@ -186,6 +186,11 @@ details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--mut
     </div>
     <div class="lskey"><span data-i18n="glove"></span><span class="r10" data-i18n="r10"></span><span class="body" data-i18n="camera"></span><small id="lsPoseNote"></small></div>
   </div>
+  <!-- 3D replay of the last swing (MediaPipe world landmarks) -->
+  <div class="chart" id="replayBox">
+    <div class="head"><span data-i18n="replayTitle"></span><span style="display:flex;gap:6px;flex:none"><button class="chip" id="rpSlow" data-i18n="replaySlow"></button><button class="chip" id="rpAgain" data-i18n="replayAgain"></button></span></div>
+    <div id="replay3d" style="height:min(70vw,360px);border-radius:8px;overflow:hidden;background:#0f1214"><div style="padding:14px;font-size:13px;color:var(--muted)" data-i18n="replayHint"></div></div>
+  </div>
   <div class="charts">
     <div class="chart" id="swingBox">
       <div class="head"><span id="swTitle" data-i18n="swingWaiting"></span><label style="display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--fg)"><input id="swSpeak" type="checkbox"> <span data-i18n="readSwings"></span></label></div>
@@ -301,6 +306,7 @@ details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--mut
 
 <script type="module">
 import { Glove, clipSamples, motionFrames, GYRO_DPS, ACC_G, SAT_DPS } from "./glove.js";
+import { createReplay } from "./replay3d.js";
 import { SwingDetector, projectedTurn, swingCamera, swingLine, swingPhasePose } from "./swing.js";
 import { VoiceCommands, Listener } from "./voice.js";
 import { GestureDetector, TAP_THRESHOLDS } from "./gesture.js";
@@ -444,7 +450,8 @@ function watchFrames() {
 }
 // Last ~4 s of small camera frames + landmarks, to show the frame at an impact that the glove reports 1-2 s later.
 const ring = [], pool = [], wristBuf = [];
-const recentPose = [];    // detection-time rows for swing summaries outside a logging session
+const recentPose = [];
+const recentWorld = [];   // [phone_ms, 33 x (x, y, z)] MediaPipe world landmarks (metres, hip-centred) for the 3D replay    // detection-time rows for swing summaries outside a logging session
 function keepFrame(t, lm) {
   const c = pool.pop() || document.createElement("canvas");
   c.width = 320; c.height = Math.round(320 * (video.videoHeight || 720) / (video.videoWidth || 1280));
@@ -473,6 +480,13 @@ function loop() {
     if (logging) log.pose.push(poseRow);
     recentPose.push(poseRow);
     while (recentPose[0][0] < poseRow[0] - 6000) recentPose.shift();
+    const world = res.worldLandmarks?.[0];
+    if (world) {
+      const worldRow = [+now.toFixed(1), ...world.flatMap((q) => [+q.x.toFixed(3), +q.y.toFixed(3), +q.z.toFixed(3)])];
+      if (logging && log.poseWorld) log.poseWorld.push(worldRow);
+      recentWorld.push(worldRow);
+      while (recentWorld[0][0] < worldRow[0] - 6000) recentWorld.shift();
+    }
     framing(landmarks);
     const liveBase = base ?? autoBase;
     $("livePose").hidden = !landmarks || !liveBase;
@@ -653,6 +667,24 @@ const swingDet = new SwingDetector(onSwing);
 // at 290-980 deg/s (range, 2026-11-13: 18 of 32 rows); real swings were 1290-2350. Those rows would also steal the R10
 // pairing, so a row needs the hand at SWING_MIN_HAND or an impact sound; the rest go to log.swingsDropped.
 const SWING_MIN_HAND = 1100;
+let replay = null, replaySlow = true;
+async function showReplay(row, phases) {
+  const ph = phases || {};
+  const t0 = (ph.address ?? (row.impactPhoneMs != null ? row.impactPhoneMs - 1500 : null));
+  const t1 = (ph.finish ?? (row.impactPhoneMs != null ? row.impactPhoneMs + 900 : null));
+  if (t0 == null || t1 == null) return;
+  const src = logging && log.poseWorld ? log.poseWorld : recentWorld;
+  const rows = src.filter((r) => r[0] >= t0 - 300 && r[0] <= t1 + 300);
+  try {
+    if (!replay) {
+      const host = $("replay3d"); host.innerHTML = "";
+      replay = createReplay(host, { noData: t("replayNoData"), fromImpact: (s) => t("replayFromImpact", s) });
+    }
+    await replay.show(rows, ph.impact ?? row.impactPhoneMs);
+  } catch (e) { console.warn("3D replay unavailable", e); }
+}
+$("rpAgain").onclick = () => replay && replay.replay();
+$("rpSlow").onclick = () => { replaySlow = !replaySlow; if (replay) replay.setSpeed(replaySlow ? 0.35 : 1); $("rpSlow").classList.toggle("on", !replaySlow); };
 function onSwing(sw) {
   if (sw.hand_dps_peak < SWING_MIN_HAND && sw.source !== "sound") {
     if (logging && log.swingsDropped) log.swingsDropped.push({ t_imp: +sw.t_imp.toFixed(3), hand: Math.round(sw.hand_dps_peak), source: sw.source, back_s: +(sw.back_s || 0).toFixed(2), down_s: +(sw.down_s || 0).toFixed(2) });
@@ -676,6 +708,7 @@ function onSwing(sw) {
   r10Pair();
   for (const [name, source, heard] of heldLabels.splice(0)) labelLast(name, source, heard);
   renderSwings();
+  showReplay(row, phasePose.phases);
   if ($("swSpeak").checked && window.speechSynthesis) {
     speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(swingLine(row, language)); u.lang = speechLocale(language); u.rate = 1.05; speechSynthesis.speak(u);
   }
@@ -1519,6 +1552,7 @@ function stopLog() {
   const meta = { saved: new Date().toISOString(), userAgent: navigator.userAgent, micSpectrogram: !!analyser, camera: running, page: PAGE_VER, batch: glove && glove.batch, probeLen: glove && glove.parser.probeLen,
     missing: glove && glove.parser.missing - log.missing0, hz: GLOVE_HZ, tapThresholds: TAP_THRESHOLDS,
     units: { ...TAP_LOG_UNITS, glove: "[phone_ms, seq, glove_t_us, hand gx gy gz ax ay az, arm gx gy gz ax ay az] raw: gyro 0.07 dps/LSB, acc 0.000488 g/LSB",
+    poseWorld: "[phone_ms, 33 x (x, y, z)] MediaPipe pose world landmarks in metres, origin between the hips, from the unmirrored camera frames; only frames with a person",
     pose: "[phone_ms, 33 x (x, y, visibility)] normalized image coords; [phone_ms] alone = frame with no person", cap: "camera capture time per pose row (phone ms; = detect time if the browser gives none)",
     swings: "swing.js per swing: t_imp = glove s, source = sound|accel|arm peak, tempo = back_s/down_s, release_ms from impact (- = before), hinge deg relative to address; t_address (takeaway), t_top, t_impact and t_finish are glove s relative to impact; finish is the start of 150 ms with forearm swing-axis speed below 30 deg/s, confirmed within 1 s after impact, or null",
     "swings.phases": "{address, top, impact, finish} in phone ms at swing analysis time using the live glove clock fit; null = unknown",
@@ -1534,7 +1568,7 @@ function stopLog() {
 $("log").onclick = () => {
   if (logging) { stopLog(); return; }
   gStats.hand = 0; gStats.arm = 0;
-  log = { cap: [], impacts: [], motion: [], swings: [], events: [{ phoneMs: +performance.now().toFixed(1), action: "settings", value: { ...cur }, source: "log start" }], labels: [], r10: [], dialChecks: [], tapCandidates: [], tapSequences: [], swingsDropped: [], clipsLost: [], t0: performance.now(), glove: [], pose: [], status: [], clips: [], missing0: glove ? glove.parser.missing : 0 };
+  log = { cap: [], impacts: [], motion: [], swings: [], events: [{ phoneMs: +performance.now().toFixed(1), action: "settings", value: { ...cur }, source: "log start" }], labels: [], r10: [], dialChecks: [], tapCandidates: [], tapSequences: [], swingsDropped: [], clipsLost: [], t0: performance.now(), glove: [], pose: [], poseWorld: [], status: [], clips: [], missing0: glove ? glove.parser.missing : 0 };
   logging = true; setText("log", "stopSaveLog"); document.body.classList.add("recording");
   dock.fold(); speak(t("startLog")); say(t(running ? "loggingGlovePose" : "loggingGlove"));
 };
