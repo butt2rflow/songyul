@@ -299,7 +299,7 @@ details.note{margin-top:6px} details.note summary{font-size:13px;color:var(--mut
 
 <script type="module">
 import { Glove, clipSamples, motionFrames, GYRO_DPS, ACC_G, SAT_DPS } from "./glove.js";
-import { SwingDetector, swingLine } from "./swing.js";
+import { SwingDetector, projectedTurn, swingLine, swingPhasePose } from "./swing.js";
 import { VoiceCommands, Listener } from "./voice.js";
 import { GestureDetector } from "./gesture.js";
 import { R10Link, pairShots, shotLine } from "./r10.js";
@@ -372,7 +372,6 @@ function fit() {
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const turn = (w, w0) => (180 / Math.PI) * Math.acos(Math.max(0, Math.min(1, w / w0)));
 
 function measure(p) {
   const W = canvas.width, H = canvas.height;
@@ -477,7 +476,7 @@ function loop() {
       const wv = (m.P[15].v + m.P[16].v) / 2;
       setText("vis", "wristConfidence", (wv * 100).toFixed(0));
       if (base) {
-        const s = turn(m.sh, base.sh), h = turn(m.hp, base.hp), x = s - h, hd = (m.head - base.head) / base.headW;
+        const s = projectedTurn(m.sh, base.sh), h = projectedTurn(m.hp, base.hp), x = s - h, hd = (m.head - base.head) / base.headW;
         show("sh", s); show("hp", h); show("xf", x); show("hd", hd, "", 2);
         peaks.sh = Math.max(peaks.sh, s); peaks.hp = Math.max(peaks.hp, h); peaks.xf = Math.max(peaks.xf, x); peaks.hd = Math.max(peaks.hd, Math.abs(hd));
         setText("shMax", "maxDegrees", peaks.sh.toFixed(0)); setText("hpMax", "maxDegrees", peaks.hp.toFixed(0));
@@ -658,7 +657,10 @@ function onSwing(sw) {
                 player: cur.player, club: cur.club, swing: cur.swing };
   for (const k of Object.keys(row)) if (typeof row[k] === "number" && !Number.isInteger(row[k])) row[k] = +row[k].toFixed(k === "t_imp" ? 6 : 3);
   swings.push(row); if (swings.length > 200) swings.shift();
-  if (logging) log.swings.push(row);
+  if (logging) {
+    Object.assign(row, swingPhasePose(sw, ck, log.pose, canvas.width / canvas.height));
+    log.swings.push(row);
+  }
   r10Pair();
   for (const [name, source, heard] of heldLabels.splice(0)) labelLast(name, source, heard);
   renderSwings();
@@ -1357,7 +1359,9 @@ function stopLog() {
   const meta = { saved: new Date().toISOString(), userAgent: navigator.userAgent, micSpectrogram: !!analyser, camera: running, page: PAGE_VER, batch: glove && glove.batch, probeLen: glove && glove.parser.probeLen,
     missing: glove && glove.parser.missing - log.missing0, hz: GLOVE_HZ, units: { glove: "[phone_ms, seq, glove_t_us, hand gx gy gz ax ay az, arm gx gy gz ax ay az] raw: gyro 0.07 dps/LSB, acc 0.000488 g/LSB",
     pose: "[phone_ms, 33 x (x, y, visibility)] normalized image coords; [phone_ms] alone = frame with no person", cap: "camera capture time per pose row (phone ms; = detect time if the browser gives none)",
-    swings: "swing.js per swing: t_imp = glove s, source = sound|accel|arm peak, tempo = back_s/down_s, release_ms from impact (- = before), hinge deg relative to address",
+    swings: "swing.js per swing: t_imp = glove s, source = sound|accel|arm peak, tempo = back_s/down_s, release_ms from impact (- = before), hinge deg relative to address; t_address (takeaway), t_top, t_impact and t_finish are glove s relative to impact; finish is the start of 150 ms with forearm swing-axis speed below 30 deg/s, confirmed within 1 s after impact, or null",
+    "swings.phases": "{address, top, impact, finish} in phone ms at swing analysis time using the live glove clock fit; null = unknown",
+    "swings.pose_at": "Same phase keys; nearest pose row within 60 ms, or null for no match or no person. frame_index = zero-based index in pose; phone_ms = pose row time; shoulder_turn_deg and hip_turn_deg = unsigned projected-width angles relative to median widths over 500 ms through the address frame (null if unavailable); head_x = nose x; lead_wrist_xy = left wrist [x, y] for a right-handed swing; coordinates normalized to the image",
     r10: "R10 Bridge shots: arrivalMs = phone ms when the page got it; swing = paired swing n (null = none), lagMs = arrival - swing impactPhoneMs; msg = app message {shot, t_wall_ms, ball{BallSpeed mph (R10 via E6), LaunchAngle, LaunchDirection, TotalSpin rpm, SpinAxis}, club{ClubHeadSpeed, ClubAnglePath, ClubAngleFace}} as the Garmin app sends them" } };
   const blob = new Blob([JSON.stringify({ meta, ...log })], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);

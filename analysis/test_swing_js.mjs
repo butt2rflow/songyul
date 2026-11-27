@@ -4,9 +4,11 @@
 //   node test_swing_js.mjs LOG.json [path/to/swing.js]
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import assert from "node:assert/strict";
+import { ClockFit } from "../phone/glove.js";
 
 const [logPath, swingPath] = process.argv.slice(2);
-const { SwingDetector, swingLine } = await import(swingPath ? pathToFileURL(swingPath).href : "../phone/swing.js");
+const { analyse, SwingDetector, swingLine, swingPhasePose } = await import(swingPath ? pathToFileURL(swingPath).href : "../phone/swing.js");
 const log = JSON.parse(readFileSync(logPath, "utf8"));
 const G = 70e-3, A = 0.488e-3;
 const events = log.glove.map((f) => [f[0], "f", f]).concat((log.clips || []).filter((c) => c.kind === "impact").map((c) => [c.lastNow, "c", c]));
@@ -47,4 +49,80 @@ if (exp.length) {
     console.log(`MISSED ${missed}, EXTRA ${extra}`);
     process.exitCode = 1;
   }
+  for (const { s } of m) {
+    assert.ok(s.t_address < s.t_top && s.t_top < s.t_impact, `swing ${s.n}: phase order`);
+    assert.equal(s.t_impact, 0);
+    assert.ok(Math.abs(s.t_top + s.down_s) <= 0.02, `swing ${s.n}: top is near pause midpoint`);
+    assert.ok(Math.abs(s.t_address + s.back_s + s.down_s) < 1e-9, `swing ${s.n}: address matches tempo`);
+    // The simulated follow-through runs for 0.55 s, with a slowing forearm and some added gyro wobble.
+    assert.ok(s.t_finish >= 0.3 && s.t_finish <= 0.85, `swing ${s.n}: unexpected finish ${s.t_finish}`);
+  }
 }
+
+// A brief slowdown and a sensor gap must not count as a full quiet interval.
+const frame = (t, arm, hand) => [t, 0, 0, hand, 0, 0, 1, 0, 0, arm, 0, 0, 1];
+const impact = 3;
+const motion = Array.from({ length: 421 }, (_, i) => {
+  const arm = i < 200 ? 0 : i < 275 ? -120 : i <= 308 ? 650 : i < 320 ? 0 : i < 345 ? -120 : 0;
+  return frame(i / 100, arm, 2 * arm);
+});
+const near = (actual, expected) => {
+  assert.notEqual(actual, null);
+  assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} != ${expected}`);
+};
+near(analyse(motion, impact).t_finish, 0.45);
+assert.equal(analyse(motion.filter((f) => f[0] < 3.59), impact).t_finish, null);
+near(analyse(motion.filter((f) => f[0] < 3.55 || f[0] > 3.74), impact).t_finish, 0.75);
+assert.equal(analyse(motion, impact, 2290, true).t_finish, null);
+const earlySound = [];
+const earlyDetector = new SwingDetector((s) => earlySound.push(s));
+for (const f of motion) {
+  if (f[0] === 3.1) earlyDetector.sound(impact);
+  earlyDetector.frame(f);
+}
+assert.equal(earlySound.length, 1);
+assert.equal(earlySound[0].source, "sound");
+near(earlySound[0].t_finish, 0.45);
+
+// A waggle can cross the forearm trigger without producing a swing or any phases.
+const waggles = [];
+const waggleDetector = new SwingDetector((s) => waggles.push(s));
+let triggered = false;
+for (let i = 0; i <= 600; i++) {
+  const rate = i >= 200 && i < 320 ? 650 * Math.sin((i - 200) * Math.PI / 30) : 0;
+  waggleDetector.frame(frame(i / 100, rate, rate));
+  triggered ||= waggleDetector.pending !== null;
+}
+assert.ok(triggered, "waggle must exercise the forearm trigger");
+assert.deepEqual(waggles, []);
+
+// Phone timestamps include clock drift. Angles use pixel aspect and median address widths.
+const clock = new ClockFit();
+Object.assign(clock, { a: 0.0001, b: 500, t0: 1000 });
+const pose = (time, dx, dy, hip) => {
+  const row = [time, ...Array(99).fill(0)];
+  const put = (joint, x, y) => row.splice(1 + 3 * joint, 3, x, y, 1);
+  put(0, 0.45, 0.3);
+  put(12, dx, dy);
+  put(15, 0.25, 0.75);
+  put(24, hip, 0);
+  return row;
+};
+const sw = { t_imp: 2, t_address: -1, t_top: -0.25, t_impact: 0, t_finish: 0.5 };
+const poses = [
+  pose(500, 0.2, 0, 0.4), pose(1250, 0.4, 0, 0.3), pose(1400, 0.5, 0, 0.3), pose(1500, 0.6, 0, 0.3),
+  pose(2190.1, 0, 0.5, 0.6), pose(2310.1, 0, 0, 0), [2500.1], pose(2501, 0.5, 0, 0.3), pose(3060.3, 0.5, 0, 0.3)
+];
+const { phases, pose_at } = swingPhasePose(sw, clock, poses, 2);
+assert.deepEqual(phases, { address: 1500, top: 2250.1, impact: 2500.1, finish: 3000.2 });
+assert.deepEqual(pose_at.top, { frame_index: 4, phone_ms: 2190.1, shoulder_turn_deg: pose_at.top.shoulder_turn_deg,
+  hip_turn_deg: 0, head_x: 0.45, lead_wrist_xy: [0.25, 0.75] });
+near(pose_at.top.shoulder_turn_deg, 60);
+assert.equal(pose_at.address.shoulder_turn_deg, 0);
+assert.equal(pose_at.impact, null, "nearest row with no person wins over a more distant pose");
+assert.equal(pose_at.finish, null, "60.1 ms is outside the match window");
+near(swingPhasePose(sw, clock, [...poses.slice(0, -1), pose(3060.2, 0.5, 0, 0.15)], 2).pose_at.finish.hip_turn_deg, 60);
+assert.equal(swingPhasePose({ ...sw, t_address: null }, clock, poses, 2).pose_at.top.shoulder_turn_deg, null);
+assert.deepEqual(swingPhasePose(sw, new ClockFit(), poses, 2).phases, { address: null, top: null, impact: null, finish: null });
+assert.equal(swingPhasePose({ ...sw, t_finish: null }, clock, poses, 2).phases.finish, null);
+console.log("PASS phase timing, waggle rejection, clock mapping, nearest pose and angles");

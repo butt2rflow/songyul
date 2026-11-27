@@ -13,6 +13,7 @@
 import { text } from "./strings.js";
 
 export const SWING_THRESH = 400, PRE_S = 2.2, POST_S = 0.4, GAP_S = 3.0, WAIT_CLIP_S = 2.5;
+const FINISH_WINDOW_S = 1, FINISH_STILL_S = 0.15, FINISH_RATE_DPS = 30, FINISH_MAX_GAP_S = 0.05;
 
 function gauss(x, sigma) {             // scipy.ndimage.gaussian_filter1d, mode "reflect", truncate 4
   if (sigma <= 0) return x.slice();
@@ -27,7 +28,7 @@ function gauss(x, sigma) {             // scipy.ndimage.gaussian_filter1d, mode 
 
 // Rotation rate about the sensor's main turning axis (first principal direction of the gyro over the window), so the
 // mounting angle doesn't matter. Sign: positive in the downswing (the biggest peak).
-export function axisRate(g) {          // g: array of [x, y, z]
+function turningAxis(g) {             // g: array of [x, y, z]
   const n = g.length, m = [0, 0, 0];
   for (const v of g) for (let k = 0; k < 3; k++) m[k] += v[k] / n;
   const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
@@ -37,15 +38,21 @@ export function axisRate(g) {          // g: array of [x, y, z]
     const w = [0, 1, 2].map((a) => C[a][0] * u[0] + C[a][1] * u[1] + C[a][2] * u[2]);
     const L = Math.hypot(...w) || 1; u = w.map((x) => x / L);
   }
+  return u;
+}
+
+function projectRate(g, u) {
   const w = g.map((v) => v[0] * u[0] + v[1] * u[1] + v[2] * u[2]);
   let big = 0; for (const x of w) if (Math.abs(x) > Math.abs(big)) big = x;
   return big < 0 ? w.map((x) => -x) : w;
 }
 
+export function axisRate(g) { return projectRate(g, turningAxis(g)); }
+
 // One swing's numbers. fr = frames [t_s, hgx, hgy, hgz, hax, hay, haz, agx, agy, agz, aax, aay, aaz] (dps, g),
 // tImp = impact time (s, same clock).
-// handOnly: no forearm IMU (e.g. a bare XIAO taped to the hand). Phases then come from the hand's own rotation, and
-// the wrist hinge (forearm minus hand) can't be measured, so hinge_top / hinge_imp / release_ms are NaN.
+// handOnly: no forearm IMU (e.g. a bare XIAO taped to the hand). Address and top then come from the hand's own rotation,
+// finish is null, and hinge_top / hinge_imp / release_ms are NaN.
 export function analyse(fr, tImp, sat = 2290, handOnly = false) {
   const w = fr.filter((f) => f[0] >= tImp - PRE_S && f[0] <= tImp + POST_S);
   if (w.length < 50) return null;
@@ -54,7 +61,10 @@ export function analyse(fr, tImp, sat = 2290, handOnly = false) {
   // 2026-10-26) the biggest peak was the impact jolt / recoil, pointing the other way, and one jolt came ~30 ms before
   // the sound time, so a peak-based rule flipped the phases; a short jolt can't outweigh the sustained downswing.
   const downPos = (x) => { let m = 0; for (let i = 0; i < x.length; i++) if (tt[i] > -0.30 && tt[i] < -0.04) m += x[i]; return m < 0 ? x.map((v) => -v) : x; };
-  const wh = downPos(axisRate(w.map((f) => [f[1], f[2], f[3]]))), wa = handOnly ? wh : downPos(axisRate(w.map((f) => [f[7], f[8], f[9]])));
+  const wh = downPos(axisRate(w.map((f) => [f[1], f[2], f[3]])));
+  const arm = handOnly ? null : w.map((f) => [f[7], f[8], f[9]]);
+  const armAxis = arm && turningAxis(arm);
+  const wa = arm ? downPos(projectRate(arm, armAxis)) : wh;
   const beta = [0];                      // trail-wrist hinge (deg): integral of forearm minus hand rate
   for (let i = 1; i < w.length; i++) {
     const dt = tt[i] - tt[i - 1];
@@ -97,7 +107,92 @@ export function analyse(fr, tImp, sat = 2290, handOnly = false) {
   return { tempo: back / Math.max(1e-3, down), back_s: back, down_s: down, release_ms: handOnly ? NaN : rel,
            hinge_top: handOnly ? NaN : bmax, hinge_imp: handOnly ? NaN : beta[i0], hand_only: handOnly,
            arm_back_deg: amp, pause_ms: (tt[a1] - tt[a0]) * 1000, arm_dps_imp: wa[i0], hand_dps_peak: wh[hp], hand_peak_ms: tt[hp] * 1000, saturated, sat_hand, sat_arm, frames: w.length,
-           rate_hz: (w.length - 1) / (tt[tt.length - 1] - tt[0]) };
+           rate_hz: (w.length - 1) / (tt[tt.length - 1] - tt[0]),
+           t_address: tt[take], t_top: tt[top], t_impact: 0, t_finish: armAxis ? followThroughEnd(fr, tImp, armAxis) : null };
+}
+
+function hasArmData(f) {
+  return Math.abs(f[7]) + Math.abs(f[8]) + Math.abs(f[9]) + Math.abs(f[10]) + Math.abs(f[11]) + Math.abs(f[12]) > 0;
+}
+
+function followThroughEnd(fr, impact, [x, y, z]) {
+  let start = null, prev = impact;
+  for (const f of fr) {
+    const t = f[0];
+    if (t <= impact) continue;
+    if (t > impact + FINISH_WINDOW_S) break;
+    if (t - prev > FINISH_MAX_GAP_S) start = null;
+    prev = t;
+    const rate = f[7] * x + f[8] * y + f[9] * z;
+    if (hasArmData(f) && Math.abs(rate) < FINISH_RATE_DPS) {
+      start ??= t;
+      if (t >= start + FINISH_STILL_S) return start - impact;
+    } else {
+      start = null;
+    }
+  }
+  return null;
+}
+
+const PHASES = ["address", "top", "impact", "finish"];
+const POSE_MAX_DELTA_MS = 60, ADDRESS_BASELINE_MS = 500;
+const LANDMARK_COUNT = 33;
+
+// Pose rows are ordered by detection time, with a timestamp-only row when no person is detected.
+function firstPoseAtOrAfter(rows, phoneMs) {
+  let lo = 0, hi = rows.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (rows[mid][0] < phoneMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function nearestPoseIndex(rows, phoneMs) {
+  if (!Number.isFinite(phoneMs)) return null;
+  const after = firstPoseAtOrAfter(rows, phoneMs), before = after - 1;
+  // Both timestamps are logged to a tenth of a millisecond. Compare in tenths to keep the boundary inclusive.
+  const early = before >= 0 ? Math.round((phoneMs - rows[before][0]) * 10) : Infinity;
+  const late = after < rows.length ? Math.round((rows[after][0] - phoneMs) * 10) : Infinity;
+  return Math.min(early, late) <= POSE_MAX_DELTA_MS * 10 ? (early <= late ? before : after) : null;
+}
+
+// Same unsigned rotation proxy as analysis/pose_demo.py and the live camera view.
+export const projectedTurn = (width, reference) =>
+  (180 / Math.PI) * Math.acos(Math.max(0, Math.min(1, width / reference)));
+
+export function swingPhasePose(sw, clock, rows, aspect) {
+  const phases = Object.fromEntries(PHASES.map((name) => {
+    const offset = sw[`t_${name}`];
+    return [name, clock?.ready() && Number.isFinite(offset) ? +clock.toPhone((sw.t_imp + offset) * 1e6).toFixed(1) : null];
+  }));
+  const indices = PHASES.map((name) => nearestPoseIndex(rows, phases[name]));
+  const xy = (row, joint) => [row[1 + 3 * joint], row[2 + 3 * joint]];
+  const hasPose = (row) => row?.length === 1 + 3 * LANDMARK_COUNT;
+  const width = (row, left, right) => {
+    const [lx, ly] = xy(row, left), [rx, ry] = xy(row, right);
+    return Math.hypot((lx - rx) * aspect, ly - ry);
+  };
+  const joints = [[11, 12], [23, 24]];
+  const addressIndex = indices[0], addressMs = rows[addressIndex]?.[0];
+  const addressRows = addressIndex === null ? [] :
+    rows.slice(firstPoseAtOrAfter(rows, addressMs - ADDRESS_BASELINE_MS), addressIndex + 1).filter(hasPose);
+  const references = joints.map(([left, right]) => {
+    const widths = addressRows.map((row) => width(row, left, right)).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!widths.length) return null;
+    const middle = Math.floor(widths.length / 2);
+    return widths.length % 2 ? widths[middle] : (widths[middle - 1] + widths[middle]) / 2;
+  });
+  const pose_at = Object.fromEntries(PHASES.map((name, i) => {
+    const frame_index = indices[i], row = rows[frame_index];
+    if (!hasPose(row)) return [name, null];
+    const [shoulder_turn_deg, hip_turn_deg] = joints.map(([left, right], j) =>
+      references[j] > 0 ? projectedTurn(width(row, left, right), references[j]) : null);
+    return [name, { frame_index, phone_ms: row[0], shoulder_turn_deg, hip_turn_deg,
+      head_x: xy(row, 0)[0], lead_wrist_xy: xy(row, 15) }];   // left wrist for the project's right-handed setup
+  }));
+  return { phases, pose_at };
 }
 
 // Impact time without a sound clip: the strongest jolt in the hand accel near the forearm's speed peak (the ball
@@ -140,7 +235,7 @@ export class SwingDetector {
     while (this.buf.length && this.buf[0][0] < f[0] - this.keep) this.buf.shift();
     // The forearm IMU can drop out mid-session and read all zeros while the firmware still says armOk (a loose STEMMA QT
     // plug after a hit, 2026-11-15, twice). After ARM_LOST_S of zeros fall back to the hand, as with no forearm IMU at all.
-    if (Math.abs(f[7]) + Math.abs(f[8]) + Math.abs(f[9]) + Math.abs(f[10]) + Math.abs(f[11]) + Math.abs(f[12]) > 0) { this.armSeen = true; this.armZeroT = null; }
+    if (hasArmData(f)) { this.armSeen = true; this.armZeroT = null; }
     else if (this.armSeen) {
       if (this.armZeroT == null) this.armZeroT = f[0];
       else if (f[0] - this.armZeroT > ARM_LOST_S) { this.armSeen = false; this.armLost = (this.armLost || 0) + 1; }
@@ -168,7 +263,10 @@ export class SwingDetector {
     }
     if (this.pending && this.pending.est) {
       const snd = this.sounds.find((t) => Math.abs(t - this.pending.est.t) < 0.3);
-      if (snd !== undefined) this.finish(snd, "sound");
+      if (snd !== undefined) {
+        // The clip usually arrives after the finish window. An early clip must leave time to observe it.
+        if (!this.armSeen || f[0] >= snd + FINISH_WINDOW_S) this.finish(snd, "sound");
+      }
       else if (f[0] >= this.pending.est.t + WAIT_CLIP_S) this.finish(this.pending.est.t, this.pending.est.source);
     }
   }
