@@ -66,6 +66,10 @@ Tap the back of your gloved hand twice to open club selection. Turn your wrist t
 |---|---|---|
 | ![Swing table with club, tempo and wrist release](docs/images/phone-swing-table.png) | ![Voice and gesture command settings](docs/images/phone-voice-gesture.png) | ![Impact waveform and spectrogram with a fat-shot label](docs/images/phone-fat-shot-recorder.png) |
 
+## Where it is going
+
+The glove is the data collector. Next: label real swings with launch-monitor results, train a model, and give a short coaching comment after every shot, later without the launch monitor. See [ROADMAP.md](ROADMAP.md).
+
 ## Quick start
 
 1. **Gather the parts.** Use a Seeed Studio XIAO nRF52840 Sense, an Adafruit LSM6DSOX STEMMA QT breakout (4438), a four-wire STEMMA QT cable, a protected 3.7 V single-cell LiPo (prototype used 350 mAh), an optional normally open 6 × 6 mm button, and a sleeve or strap. For the current detector, mount the XIAO on the hand and the breakout on the forearm. See the [wiring diagram notes](docs/README.md) and [v3 case fit notes](cad/README.md).
