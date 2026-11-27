@@ -137,6 +137,12 @@ function followThroughEnd(fr, impact, [x, y, z]) {
 const PHASES = ["address", "top", "impact", "finish"];
 const POSE_MAX_DELTA_MS = 60, ADDRESS_BASELINE_MS = 500;
 const LANDMARK_COUNT = 33;
+const TURN_JOINTS = [[11, 12], [23, 24]];
+const poseX = (row, joint) => row[1 + 3 * joint];
+const poseY = (row, joint) => row[2 + 3 * joint];
+const hasPose = (row) => row?.length === 1 + 3 * LANDMARK_COUNT;
+const poseWidth = (row, left, right, aspect) =>
+  Math.hypot((poseX(row, left) - poseX(row, right)) * aspect, poseY(row, left) - poseY(row, right));
 
 // Pose rows are ordered by detection time, with a timestamp-only row when no person is detected.
 function firstPoseAtOrAfter(rows, phoneMs) {
@@ -168,18 +174,11 @@ export function swingPhasePose(sw, clock, rows, aspect) {
     return [name, clock?.ready() && Number.isFinite(offset) ? +clock.toPhone((sw.t_imp + offset) * 1e6).toFixed(1) : null];
   }));
   const indices = PHASES.map((name) => nearestPoseIndex(rows, phases[name]));
-  const xy = (row, joint) => [row[1 + 3 * joint], row[2 + 3 * joint]];
-  const hasPose = (row) => row?.length === 1 + 3 * LANDMARK_COUNT;
-  const width = (row, left, right) => {
-    const [lx, ly] = xy(row, left), [rx, ry] = xy(row, right);
-    return Math.hypot((lx - rx) * aspect, ly - ry);
-  };
-  const joints = [[11, 12], [23, 24]];
   const addressIndex = indices[0], addressMs = rows[addressIndex]?.[0];
   const addressRows = addressIndex === null ? [] :
     rows.slice(firstPoseAtOrAfter(rows, addressMs - ADDRESS_BASELINE_MS), addressIndex + 1).filter(hasPose);
-  const references = joints.map(([left, right]) => {
-    const widths = addressRows.map((row) => width(row, left, right)).filter(Number.isFinite).sort((a, b) => a - b);
+  const references = TURN_JOINTS.map(([left, right]) => {
+    const widths = addressRows.map((row) => poseWidth(row, left, right, aspect)).filter(Number.isFinite).sort((a, b) => a - b);
     if (!widths.length) return null;
     const middle = Math.floor(widths.length / 2);
     return widths.length % 2 ? widths[middle] : (widths[middle - 1] + widths[middle]) / 2;
@@ -187,12 +186,42 @@ export function swingPhasePose(sw, clock, rows, aspect) {
   const pose_at = Object.fromEntries(PHASES.map((name, i) => {
     const frame_index = indices[i], row = rows[frame_index];
     if (!hasPose(row)) return [name, null];
-    const [shoulder_turn_deg, hip_turn_deg] = joints.map(([left, right], j) =>
-      references[j] > 0 ? projectedTurn(width(row, left, right), references[j]) : null);
+    const [shoulder_turn_deg, hip_turn_deg] = TURN_JOINTS.map(([left, right], j) =>
+      references[j] > 0 ? projectedTurn(poseWidth(row, left, right, aspect), references[j]) : null);
     return [name, { frame_index, phone_ms: row[0], shoulder_turn_deg, hip_turn_deg,
-      head_x: xy(row, 0)[0], lead_wrist_xy: xy(row, 15) }];   // left wrist for the project's right-handed setup
+      head_x: poseX(row, 0), lead_wrist_xy: [poseX(row, 15), poseY(row, 15)] }];   // left wrist for the project's right-handed setup
   }));
   return { phases, pose_at };
+}
+
+export function swingCamera(poseAt, rows, aspect) {
+  const address = rows[poseAt.address?.frame_index];
+  const reference = hasPose(address) ? {
+    sh: poseWidth(address, 11, 12, aspect),
+    hp: poseWidth(address, 23, 24, aspect),
+    head: poseX(address, 0) * aspect,
+    headW: poseWidth(address, 7, 8, aspect),
+  } : null;
+  const anglesAt = (phase) => {
+    const row = rows[poseAt[phase]?.frame_index];
+    const [shoulder, hip] = TURN_JOINTS.map(([left, right], i) => {
+      const baseWidth = i === 0 ? reference?.sh : reference?.hp;
+      if (!hasPose(row) || !(baseWidth > 0)) return null;
+      const width = poseWidth(row, left, right, aspect);
+      return Number.isFinite(width) ? projectedTurn(width, baseWidth) : null;
+    });
+    return { shoulder_turn_deg: shoulder, hip_turn_deg: hip, x_factor_deg: shoulder === null || hip === null ? null : shoulder - hip };
+  };
+  let head_sway_max_head_widths = null;
+  if (poseAt.impact && reference?.headW > 0 && Number.isFinite(reference.head)) {
+    for (let i = poseAt.address.frame_index; i <= poseAt.impact.frame_index; i++) {
+      const row = rows[i];
+      if (!hasPose(row) || !Number.isFinite(poseX(row, 0))) continue;
+      const sway = Math.abs((poseX(row, 0) * aspect - reference.head) / reference.headW);
+      head_sway_max_head_widths = Math.max(head_sway_max_head_widths ?? 0, sway);
+    }
+  }
+  return { reference, camera: { top: anglesAt("top"), impact: anglesAt("impact"), head_sway_max_head_widths } };
 }
 
 // Impact time without a sound clip: the strongest jolt in the hand accel near the forearm's speed peak (the ball
@@ -283,9 +312,13 @@ export class SwingDetector {
 
 // One short spoken line for a swing, in plain numbers.
 export function swingLine(s, language = "ko") {
-  const tempo = text("tempoSpoken", language, s.tempo.toFixed(1));
-  if (s.hand_only || Number.isNaN(s.release_ms)) return tempo;
-  const rel = Math.round(-s.release_ms);
-  const when = text(rel > 5 ? "beforeImpact" : rel < -5 ? "afterImpact" : "atImpact", language, Math.abs(rel));
-  return tempo + " " + text("releaseSpoken", language, when);
+  const parts = [text("tempoSpoken", language, s.tempo.toFixed(1))];
+  if (!s.hand_only && !Number.isNaN(s.release_ms)) {
+    const rel = Math.round(-s.release_ms);
+    const when = text(rel > 5 ? "beforeImpact" : rel < -5 ? "afterImpact" : "atImpact", language, Math.abs(rel));
+    parts.push(text("releaseSpoken", language, when));
+  }
+  const shoulder = s.camera?.top.shoulder_turn_deg;
+  if (Number.isFinite(shoulder)) parts.push(text("shoulderTopSpoken", language, shoulder.toFixed(0)));
+  return parts.join(" ");
 }

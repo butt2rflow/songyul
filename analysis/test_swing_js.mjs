@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { ClockFit } from "../phone/glove.js";
 
 const [logPath, swingPath] = process.argv.slice(2);
-const { analyse, SwingDetector, swingLine, swingPhasePose } = await import(swingPath ? pathToFileURL(swingPath).href : "../phone/swing.js");
+const { analyse, SwingDetector, swingCamera, swingLine, swingPhasePose } = await import(swingPath ? pathToFileURL(swingPath).href : "../phone/swing.js");
 const log = JSON.parse(readFileSync(logPath, "utf8"));
 const G = 70e-3, A = 0.488e-3;
 const events = log.glove.map((f) => [f[0], "f", f]).concat((log.clips || []).filter((c) => c.kind === "impact").map((c) => [c.lastNow, "c", c]));
@@ -99,10 +99,12 @@ assert.deepEqual(waggles, []);
 // Phone timestamps include clock drift. Angles use pixel aspect and median address widths.
 const clock = new ClockFit();
 Object.assign(clock, { a: 0.0001, b: 500, t0: 1000 });
-const pose = (time, dx, dy, hip) => {
+const pose = (time, dx, dy, hip, head = 0.45) => {
   const row = [time, ...Array(99).fill(0)];
   const put = (joint, x, y) => row.splice(1 + 3 * joint, 3, x, y, 1);
-  put(0, 0.45, 0.3);
+  put(0, head, 0.3);
+  put(7, 0.4, 0.3);
+  put(8, 0.5, 0.3);
   put(12, dx, dy);
   put(15, 0.25, 0.75);
   put(24, hip, 0);
@@ -126,3 +128,31 @@ assert.equal(swingPhasePose({ ...sw, t_address: null }, clock, poses, 2).pose_at
 assert.deepEqual(swingPhasePose(sw, new ClockFit(), poses, 2).phases, { address: null, top: null, impact: null, finish: null });
 assert.equal(swingPhasePose({ ...sw, t_finish: null }, clock, poses, 2).phases.finish, null);
 console.log("PASS phase timing, waggle rejection, clock mapping, nearest pose and angles");
+
+// The card uses the exact address frame. The largest head movement can be between phase frames.
+const cameraPoses = [
+  pose(1300, 0.3, 0, 0.2), pose(1400, 0.3, 0, 0.2), pose(1500, 0.6, 0, 0.4),
+  [2000], pose(2100, 0.6, 0, 0.4, 0.2), pose(2250.1, 0, 0, 0.2), pose(2500.1, 0.3, 0, 0.4, 0.5),
+  pose(2600, 0.6, 0, 0.4, 0.1)
+];
+const cameraFor = (rows) => swingCamera(swingPhasePose(sw, clock, rows, 2).pose_at, rows, 2).camera;
+const camera = cameraFor(cameraPoses);
+near(camera.top.shoulder_turn_deg, 90);
+near(camera.top.hip_turn_deg, 60);
+near(camera.top.x_factor_deg, 30);
+near(camera.impact.shoulder_turn_deg, 60);
+assert.equal(camera.impact.hip_turn_deg, 0);
+near(camera.impact.x_factor_deg, 60);
+near(camera.head_sway_max_head_widths, 2.5);
+const missingImpact = cameraFor(cameraPoses.map((row) => row[0] === 2500.1 ? [row[0]] : row));
+near(missingImpact.top.shoulder_turn_deg, 90);
+assert.equal(missingImpact.impact.shoulder_turn_deg, null);
+assert.equal(missingImpact.head_sway_max_head_widths, null);
+const missing = cameraFor(cameraPoses.map(([time]) => [time]));
+const unavailable = { shoulder_turn_deg: null, hip_turn_deg: null, x_factor_deg: null };
+assert.deepEqual(missing, { top: unavailable, impact: unavailable, head_sway_max_head_widths: null });
+const speechSwing = { tempo: 3, release_ms: NaN, hand_only: true };
+assert.match(swingLine({ ...speechSwing, camera }, "ko"), /어깨 90도\.$/);
+assert.match(swingLine({ ...speechSwing, camera }, "en"), /Shoulders 90 degrees\.$/);
+assert.equal(swingLine({ ...speechSwing, camera: missing }, "en"), swingLine(speechSwing, "en"));
+console.log("PASS swing camera reference, phase angles, head sway and KO/EN speech");
