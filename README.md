@@ -52,7 +52,13 @@ Two IMUs track the hand and forearm. The onboard mic captures impact sound. The 
 
 ## Phone page
 
-The phone page and voice commands support English and Korean. Use the **KO / EN** buttons in the settings area to change the language. The screenshots use simulated swings and impact audio.
+![Real phone screen recording at an indoor range: right after the swing, glove values (blue) and R10 values (green) pop up over the camera with the impact sound and vibration pictures. Face blurred](docs/images/real-screen.gif)
+
+*A real session, recorded from the phone screen (Korean UI, face blurred). Right after impact the card shows the glove's tempo, wrist release, hinge and hand speed (blue) and the R10's ball speed, launch, path and face (green), with the impact sound and impact vibration below.*
+
+![Hand and forearm rotation for one real swing, with address, top, impact and finish marked and the paired R10 ball speed](docs/images/real-swing-gyro.png)
+
+The phone page and voice commands support English and Korean. Use the **KO / EN** buttons in the settings area to change the language. The three screenshots below use simulated swings and impact audio; the gesture panel in them still shows the older tap mapping.
 
 Tap the back of your gloved hand twice to open club selection. Turn your wrist to choose a club, then tap twice again to confirm. With the club dial closed, four taps start voice listening by default.
 
