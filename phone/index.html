@@ -306,7 +306,7 @@ import { VoiceCommands, Listener } from "./voice.js";
 import { GestureDetector, TAP_THRESHOLDS } from "./gesture.js";
 import { R10Link, pairShots, shotLine } from "./r10.js";
 import { LANGUAGE_KEY, pickLanguage, speechLocale, text } from "./strings.js";
-const PAGE_VER = "2026-11-27a";
+const PAGE_VER = "2026-11-27b";
 const GLOVE_HZ = 240;   // the glove firmware's rate (was a menu with 400 for PC tests and 180 for old firmware)
 
 const $ = (id) => document.getElementById(id);
@@ -816,9 +816,12 @@ function shown(kind, cmd, value, matcher = matchers[language]) {
 }
 function reply(t) {
   $("vHeard").textContent = t;
+  speakVoicePrompt(t);
+}
+function speakVoicePrompt(message) {
   if (!window.speechSynthesis) return;
   listener.pause(); speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t); u.lang = speechLocale(language); u.rate = 1.1;
+  const u = new SpeechSynthesisUtterance(message); u.lang = speechLocale(language); u.rate = 1.1;
   u.onend = u.onerror = () => listener.resume(); speechSynthesis.speak(u);
 }
 const KIND = { set_club: "club", set_swing: "swing", set_player: "player" };
@@ -882,12 +885,30 @@ $("vCont").onchange = () => listener.setContinuous($("vCont").checked);
 
 // ---- hand gestures (gesture.js) -> a command phrase (run like a voice command) or "listen" ----
 // Keep the stored Korean preset values for existing settings. Custom phrases retain their entry language.
-const G_DEFAULT = { tap2: "__listen", hold: ko("gestureLast"), twist: ko("good"), shake: ko("cancel") };
+const G_SETTINGS_KEY = "pg-gesture-v1", G_SETTINGS_VERSION = 2;
+const G_DEFAULT = { tap4: "__listen", hold: ko("gestureLast"), twist: ko("good"), shake: ko("cancel") };
 const G_CHOICES = [["__listen", "gestureListen"], ...["gestureLast", "good", "fat", "cancel", "gestureSummary",
   "gestureClub", "battery", "startLog"].map((key) => [ko(key), key]), [ko("gestureStopValue"), "gestureStopLog"], ["", "gestureOff"]];
-const gLoad = () => { try { const v = JSON.parse(localStorage.getItem("pg-gesture-v1")); if (v && v.map) return v; } catch (e) {} return { on: true, map: { ...G_DEFAULT }, holdRef: null }; };
+function gSave(settings = gCfg) {
+  try { localStorage.setItem(G_SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+function gLoad() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(G_SETTINGS_KEY));
+    if (saved?.map && typeof saved.map === "object" && !Array.isArray(saved.map)) {
+      if ((saved.version ?? 1) < G_SETTINGS_VERSION) {
+        saved.version = G_SETTINGS_VERSION;
+        saved.map.tap4 = G_DEFAULT.tap4;
+        delete saved.map.tap2;
+        if (saved.languages) delete saved.languages.tap2;
+        gSave(saved);
+      }
+      return saved;
+    }
+  } catch (e) {}
+  return { version: G_SETTINGS_VERSION, on: true, map: { ...G_DEFAULT }, holdRef: null };
+}
 let gCfg = gLoad(), lastHandAcc = null;
-const gSave = () => { try { localStorage.setItem("pg-gesture-v1", JSON.stringify(gCfg)); } catch (e) {} };
 // every dial check (accepted or not) is kept on the phone (last 100, survives a reload or a closed tab) and in the session log
 const DIAL_KEEP = 100;
 function dialNote(n) {
@@ -918,14 +939,16 @@ function tapCandidate(t, candidate, counted) {
   pendingTapCandidates.push({ ...row, at: new Date(performance.timeOrigin + row.phoneMs).toISOString(), page: PAGE_VER });
   if (pendingTapCandidates.length > TAP_KEEP) pendingTapCandidates.shift();
   if (tapStoreTimer === null) tapStoreTimer = setTimeout(flushTapCandidates, 250);
-  if (counted && gestDet.enabled.tap4 && candidate.countAfter <= TAP_THRESHOLDS.targetCount) tapFeedback(candidate.countAfter);
+  const max = candidate.gesture === "tap2" ? TAP_THRESHOLDS.clubCount : TAP_THRESHOLDS.voiceCount;
+  if (counted && candidate.countAfter <= max) tapFeedback(candidate.countAfter);
 }
 function tapSequence(t, sequence) {
   if (logging) log.tapSequences.push({ phoneMs: tapPhoneMs(t), ...sequence });
   if (sequence.outcome === "timeout" && sequence.countReached >= 2) tapFeedback("reset");
 }
 const gestDet = new GestureDetector(onGesture, { holdRef: gCfg.holdRef, dialAxis: gCfg.dialAxis || null,
-  enabled: { dial: false, tap4: gCfg.dialOn !== false }, onDialNote: dialNote, onTapCandidate: tapCandidate, onTapSequence: tapSequence });
+  enabled: { dial: false, tap2: gCfg.dialOn !== false, tap4: !!gCfg.map.tap4 },
+  onDialNote: dialNote, onTapCandidate: tapCandidate, onTapSequence: tapSequence });
 function gLabel(v) { const c = G_CHOICES.find((x) => x[0] === v); return c ? t(c[1]) : `"${v}"`; }
 // ---- club wheel: a dial-like wrist turn steps the club, shown as a spinning 3D carousel ----
 // Clubs come from commands.json (set_club, in bag order: driver ... wedges, putter) under the names the quick buttons use.
@@ -933,7 +956,7 @@ function gLabel(v) { const c = G_CHOICES.find((x) => x[0] === v); return c ? t(c
 // Which way is "clockwise" depends on how the glove sits, so gCfg.dialRev flips it.
 const CW_SHORT = { driver: "shortDriver", wood3: "shortWood3", wood5: "shortWood5", hybrid: "shortHybrid",
   pw: "shortPw", gw: "shortGw", sw: "shortSw", lw: "shortLw", putter: "shortPutter" };
-let cwPos = 0, cwTimer = null, cwBuilt = false;
+let cwPos = 0, cwTimer = null, cwBuilt = false, cwSelected = null;
 function cwClubs() { return (matchers.ko?.commands || []).filter((c) => c.action === "set_club"); }
 function cwBuild(clubs) {
   const n = clubs.length, step = 360 / n, R = Math.round(70 / Math.tan(Math.PI / n));   // ~140 px between neighbours
@@ -946,23 +969,35 @@ function cwBuild(clubs) {
   }));
   cwBuilt = true;
 }
-// club-change mode (2026-11-13): four taps on the back of the hand open it, the wheel stays up, turning the wrist a
-// little steps the club slowly and turning it further steps faster, four taps again close it (and say the club).
+// Two taps open the club wheel. Turn the wrist to step through clubs, then tap twice to confirm.
 let clubMode = false;
-function clubModeOn(t) {
-  clubMode = true; gestDet.startClubMode(t);
-  qEvent("gesture", { gesture: "tap4", action: "club mode on" }, "gesture");
+function clubModeOn(time) {
+  clubMode = true; gestDet.startClubMode(time);
+  qEvent("gesture", { gesture: "tap2", action: "club mode on" }, "gesture");
+  cwSelected = null;
   clubDial({ dir: 0, steps: 0, deg: 0 }, true);
-  tapFeedback("done");
+  const wait = tapFeedback("done");
+  const prompt = () => { if (clubMode) speakVoicePrompt(t("clubModePrompt")); };
+  if (wait) setTimeout(prompt, wait); else prompt();
 }
 function clubModeOff(why) {
   if (!clubMode) return;
   clubMode = false; gestDet.stopClubMode();
-  qEvent("gesture", { gesture: "tap4", action: `club mode off (${why})` }, "gesture");
+  qEvent("gesture", { gesture: "tap2", action: `club mode off (${why})` }, "gesture");
   if (gestDet.dialAxis) { gCfg.dialAxis = gestDet.dialAxis.map((x) => +x.toFixed(3)); gSave(); }
   clearTimeout(cwTimer); cwTimer = setTimeout(() => $("clubWheel").classList.remove("show"), 1200);
-  try { navigator.vibrate && navigator.vibrate(150); } catch (e) {}
-  if (cur.club) speak(displayName(cur.club));
+  if (why === "tap2") {
+    if (cwSelected && cwSelected !== cur.club) setSetting("club", cwSelected, "gesture", "club mode confirm");
+    const name = cur.club;
+    const wait = tapFeedback("done");
+    if (name) {
+      const confirm = () => speakVoicePrompt(t("clubModeConfirmed", displayName(name)));
+      if (wait) setTimeout(confirm, wait); else confirm();
+    }
+  } else {
+    try { navigator.vibrate?.(150); } catch (e) {}
+    if (cur.club) speak(displayName(cur.club));
+  }
 }
 function clubDial(g, inMode = false) {
   const clubs = cwClubs(); if (!clubs.length) return;
@@ -974,6 +1009,7 @@ function clubDial(g, inMode = false) {
   const dir = (gCfg.dialRev ? -1 : 1) * g.dir, steps = g.steps ?? 1;
   cwPos += dir * steps;                                              // unbounded, so the ring always spins the way the wrist turned
   const sel = ((cwPos % n) + n) % n, name = shown("club", clubs[sel]);
+  if (inMode) cwSelected = name;
   const ring = $("cwRing"); ring.style.transform = `translateZ(-${Math.round(70 / Math.tan(Math.PI / n))}px) rotateY(${-cwPos * step}deg)`;
   ring.querySelectorAll(".ci").forEach((el) => {
     const i = +el.dataset.i; let d = Math.abs(((i - cwPos) % n + n) % n); d = Math.min(d, n - d);
@@ -988,7 +1024,7 @@ function clubDial(g, inMode = false) {
   if (!inMode) speak(displayName(name));                              // in the mode the club is said once, when it closes
 }
 function onGesture(g) {
-  if (g.name === "tap4") { if (gCfg.dialOn === false) return; if (clubMode) clubModeOff("tap4"); else clubModeOn(g.t); return; }
+  if (g.name === "tap2") { if (gCfg.dialOn === false) return; if (clubMode) clubModeOff("tap2"); else clubModeOn(g.t); return; }
   if (g.name === "clubstep") { if (clubMode) clubDial({ dir: g.dir, steps: 1, deg: g.deg }, true); return; }
   if (g.name === "clubmode") { clubModeOff(g.why); return; }
   if (g.name === "dial") {
@@ -1000,7 +1036,17 @@ function onGesture(g) {
   qEvent("gesture", { gesture: g.name, action: act || null }, "gesture");
   if (!act) return;
   bindText("gLast", () => `${t(g.name)} → ${gLabel(act)}`);
-  if (act === "__listen") { try { navigator.vibrate && navigator.vibrate(80); } catch (e) {} listener.listenOnce(); return; }
+  if (act === "__listen") {
+    if (g.name === "tap4") {
+      const wait = tapFeedback("voice");
+      if (wait) setTimeout(() => { if (gCfg.on && gCfg.map.tap4 === "__listen") listener.listenOnce(); }, wait);
+      else listener.listenOnce();
+    } else {
+      try { navigator.vibrate?.(80); } catch (e) {}
+      listener.listenOnce();
+    }
+    return;
+  }
   runVoice([act], gCfg.languages?.[g.name] || "ko");
 }
 function gRender() {
@@ -1008,19 +1054,19 @@ function gRender() {
   $("gRows").innerHTML = "";
   {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td style="white-space:normal">${t("gestureDialFlow", t("tap4"))}</td><td style="white-space:normal"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-dial="on"${gCfg.dialOn !== false ? " checked" : ""}> ${t("changeClub")}</label>` +
+    tr.innerHTML = `<td style="white-space:normal">${t("gestureDialFlow", t("tap2"))}</td><td style="white-space:normal"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-dial="on"${gCfg.dialOn !== false ? " checked" : ""}> ${t("changeClub")}</label>` +
       `<label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-dial="feedback"${gCfg.tapFeedback !== false ? " checked" : ""}> ${t("tapFeedback")}</label>` +
       `<label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-dial="rev"${gCfg.dialRev ? " checked" : ""}> ${t("reverseDial")}</label></td>`;
     $("gRows").appendChild(tr);
     tr.querySelector('[data-dial="on"]').onchange = (e) => {
-      gCfg.dialOn = e.target.checked; gestDet.enabled.tap4 = gCfg.dialOn;
+      gCfg.dialOn = e.target.checked; gestDet.enabled.tap2 = gCfg.dialOn;
       if (gCfg.dialOn) unlockTapAudio(); else clubModeOff("off");
       gSave();
     };
     tr.querySelector('[data-dial="feedback"]').onchange = (e) => { gCfg.tapFeedback = e.target.checked; if (gCfg.tapFeedback) unlockTapAudio(); gSave(); };
     tr.querySelector('[data-dial="rev"]').onchange = (e) => { gCfg.dialRev = e.target.checked; gSave(); };
   }
-  for (const k of ["tap2", "hold", "twist", "shake"]) {
+  for (const k of ["tap4", "hold", "twist", "shake"]) {
     const tr = document.createElement("tr");
     const v = gCfg.map[k] ?? "";
     tr.innerHTML = `<td style="white-space:normal">${t(k)}${k === "hold" ? `<br><button class="chip" data-reg="1" style="margin-top:4px">${t(gCfg.holdRef ? "registerAgain" : "poseRegistered")}</button>` : ""}</td>` +
@@ -1038,7 +1084,9 @@ function gRender() {
     const custom = v === "__custom";
     if (custom) { v = (prompt(t("gesturePrompt")) || "").trim(); if (!v) { gRender(); return; } }
     (gCfg.languages ||= {})[el.dataset.k] = custom ? language : "ko";
-    gCfg.map[el.dataset.k] = v; gSave(); gRender();
+    gCfg.map[el.dataset.k] = v;
+    if (el.dataset.k === "tap4") { gestDet.enabled.tap4 = !!v; unlockTapAudio(); }
+    gSave(); gRender();
   });
   const reg = $("gRows").querySelector("[data-reg]");
   if (reg) reg.onclick = () => {
@@ -1175,7 +1223,7 @@ function getAudioContext() {
   return audioCtx;
 }
 function unlockTapAudio() {
-  if (!gCfg.on || !gestDet.enabled.tap4 || gCfg.tapFeedback === false) return;
+  if (!gCfg.on || !(gestDet.enabled.tap2 || gestDet.enabled.tap4) || gCfg.tapFeedback === false) return;
   try {
     const audio = getAudioContext();
     if (audio && audio.state !== "running") audio.resume().catch(() => {});
@@ -1184,13 +1232,13 @@ function unlockTapAudio() {
 // Bluetooth callbacks have no user activation. Unlock Web Audio on the page interaction that precedes them.
 document.addEventListener("click", (e) => { if (e.isTrusted) unlockTapAudio(); }, true);
 function tapFeedback(cue) {
-  if (gCfg.tapFeedback === false) return;
+  if (gCfg.tapFeedback === false) return 0;
   if (cue !== "reset") {
-    try { navigator.vibrate?.(cue === "done" ? [60, 60, 60] : 18); } catch (e) {}
+    try { navigator.vibrate?.(cue === "done" ? [60, 60, 60] : cue === "voice" ? 80 : 18); } catch (e) {}
   }
-  if (audioCtx?.state !== "running") return;
-  const tones = cue === "done" ? [1047, 1568] : cue === "reset" ? [220] : [[440, 554, 659, 784][cue - 1]];
-  const duration = cue === "reset" ? 0.10 : cue === "done" ? 0.075 : 0.045;
+  if (audioCtx?.state !== "running") return 0;
+  const tones = cue === "done" ? [1047, 1568] : cue === "voice" ? [1175] : cue === "reset" ? [220] : [[440, 554, 659, 784][cue - 1]];
+  const duration = cue === "reset" ? 0.10 : cue === "done" || cue === "voice" ? 0.075 : 0.045;
   const start = audioCtx.currentTime;
   for (const [i, hz] of tones.entries()) {
     const at = start + i * duration;
@@ -1203,6 +1251,7 @@ function tapFeedback(cue) {
     osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(at); osc.stop(at + duration);
   }
+  return Math.ceil(tones.length * duration * 1000 + 20);
 }
 // Light on purpose: a 300 x 128 canvas (CSS scales it), one 1-pixel ImageData column per tick, ~30 ticks/s.
 // The first version painted every screen row with its own fillStyle each frame and starved the Bluetooth
@@ -1460,8 +1509,8 @@ function drawImpact(c) {
 
 
 const TAP_LOG_UNITS = {
-  tapCandidates: "phoneMs = page performance clock ms (glove clock fit, or receipt time if unavailable); peak = max absolute hand accel axis jump in g over the lookback. An impulse is consecutive samples above diagnosticJumpG; weak impulses use their maximum jump, strong impulses use the first decision sample and any counted samples. handGyroDps = hand gyro vector magnitude in deg/s; gapMs = glove-clock ms since previous candidate (null for first); countAfter = current accepted tap count. rejectReason = null for a count, too_slow for a gap that ends the old run but starts a new one, or too_weak | too_fast | after_swing_holdoff | motion | other.",
-  tapSequences: "Four-tap attempts: phoneMs = outcome time on the page performance clock in ms; countReached = taps counted; durationMs = glove-clock ms from first counted tap through outcome (including timeout or calm confirmation); outcome = completed | timeout | too_slow | after_swing_holdoff | other.",
+  tapCandidates: "phoneMs = page performance clock ms (glove clock fit, or receipt time if unavailable); peak = max absolute hand accel axis jump in g over the lookback. An impulse is consecutive samples above diagnosticJumpG; weak impulses use their maximum jump, strong impulses use the first decision sample and any counted samples. handGyroDps = hand gyro vector magnitude in deg/s; gapMs = glove-clock ms since previous candidate (null for first); countAfter = current accepted tap count. sequenceId joins tapSequences on this page (null without an active run); gesture = tap2 (club) | tap4 (voice by default) | null (undetermined at this candidate). rejectReason = null for a count, too_slow for a gap that ends the old run but starts a new one, or too_weak | too_fast | after_swing_holdoff | motion | other.",
+  tapSequences: "sequenceId = page-local run number; gesture = tap2 (club) | tap4 (voice by default) | null (a single counted tap could belong to either); a failed run is labeled from its mode and count when possible. phoneMs = outcome time on the page performance clock in ms; countReached = taps counted; durationMs = glove-clock ms from first counted tap through outcome (including timeout or calm confirmation); outcome = completed | timeout | too_slow | after_swing_holdoff | other.",
 };
 function stopLog() {
   logging = false; setText("log", "startLog"); document.body.classList.remove("recording"); ckptDrop();

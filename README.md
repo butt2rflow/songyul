@@ -54,6 +54,8 @@ Two IMUs track the hand and forearm. The onboard mic captures impact sound. The 
 
 The phone page and voice commands support English and Korean. Use the **KO / EN** buttons in the settings area to change the language. The screenshots use simulated swings and impact audio.
 
+Tap the back of your gloved hand twice to open club selection. Turn your wrist to choose a club, then tap twice again to confirm. With the club dial closed, four taps start voice listening by default.
+
 | Swing table | Voice and gesture commands | Fat-shot audio |
 |---|---|---|
 | ![Swing table with club, tempo and wrist release](docs/images/phone-swing-table.png) | ![Voice and gesture command settings](docs/images/phone-voice-gesture.png) | ![Impact waveform and spectrogram with a fat-shot label](docs/images/phone-fat-shot-recorder.png) |

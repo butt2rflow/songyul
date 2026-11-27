@@ -37,6 +37,7 @@ const cases = [
   ["double tap 0.2 s", [still(), taps([0.1, 0.3]), still()], ["tap2"]],
   ["double tap 0.12 s", [still(), taps([0.1, 0.22]), still()], ["tap2"]],
   ["double tap 0.4 s", [still(), taps([0.1, 0.5]), still()], ["tap2"]],
+  ["double tap without prior calm", [taps([0.1, 0.3]), still()], []],
   ["twist x2", [still(), twist(), still()], ["twist"]],
   ["gentler twist 460", [still(), twist(460), still()], ["twist"]],
   ["slow twist 2 Hz", [still(), twist(520, 2.0, 1.0), still()], ["twist"]],
@@ -64,6 +65,7 @@ const cases = [
   ["slow turn 2.5 s (no dial)", [still(), dial(120, 2.5), stillAt(120)], []],
   ["dial without calm before", [waggle(200), dial(90), stillAt(90)], []],
   ["four taps = tap4", [still(), taps([0.1, 0.3, 0.5, 0.7]), still()], ["tap4"]],
+  ["four taps without prior calm", [taps([0.1, 0.3, 0.5, 0.7]), still()], ["tap4"]],
   ["three taps = nothing", [still(), taps([0.1, 0.3, 0.5]), still()], []],
   ["five taps = nothing", [still(), [1.2, (tau) => taps([0.1, 0.3, 0.5, 0.7, 0.9])[1](tau)], still()], []],
   ["hold without a taught pose", [still(), toPose, hold, still([1, 0, 0])], [], { holdRef: null }],
@@ -76,40 +78,50 @@ for (const [name, parts, want, opts] of cases) {
 }
 console.log(`${pass}/${cases.length} made-up cases`);
 
-// club-change mode: tap4 starts it, the wrist angle sets the stepping speed, tap4 ends it
+// Club-change mode: tap2 starts it, the wrist angle sets the stepping speed, tap2 confirms.
 {
   const holdAt = (deg, dur) => [dur, () => [[0, Math.sin(deg * Math.PI / 180), Math.cos(deg * Math.PI / 180)], [0, 0, 0], [0, 0, 0]]];
   const turn = (from, to, dur = 0.3) => { const [d, fn] = dial(to - from, dur); return [d, (tau) => fn(tau)]; };
-  const parts = [still(), taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.2),      // tap4 -> mode on (bias taken while still)
+  const parts = [still(), taps([0.1, 0.3]), holdAt(0, 1.2),                 // tap2 -> mode on (bias taken while still)
     turn(0, 35), holdAt(35, 3.0),                                            // small turn: slow steps (every 0.9 s)
     turn(35, 0), holdAt(0, 1.0),                                             // back to the middle: no steps
     turn(0, -120, 0.5), holdAt(-120, 1.0),                                   // big turn the other way: fast steps (every 0.2 s)
-    turn(-120, 0, 0.5), holdAt(0, 1.6), taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.5)];   // tap4 -> mode off
-  const ev = []; let d;
+    turn(-120, 0, 0.5), holdAt(0, 1.6),
+    taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.5),                            // four taps inside the mode cannot start voice
+    taps([0.1, 0.3]), holdAt(0, 1.5)];                                    // tap2 -> confirm and leave
+  const ev = [], candidates = [], runs = []; let d;
   d = new GestureDetector((x) => {
     ev.push(x);
-    if (x.name === "tap4") { if (d.mode) d.stopClubMode(); else d.startClubMode(x.t); }
-  }, { dialAxis: [1, 0, 0] });
+    if (x.name === "tap2") { if (d.mode) d.stopClubMode(); else d.startClubMode(x.t); }
+  }, { dialAxis: [1, 0, 0], onTapCandidate: (_, row, counted) => { if (counted) candidates.push(row); },
+    onTapSequence: (_, row) => runs.push(row) });
   for (const f of seq(parts)) d.frame(f);
   const names = ev.map((x) => x.name === "clubstep" ? (x.dir > 0 ? "+" : "-") : x.name);
   const plus = names.filter((x) => x === "+").length, minus = names.filter((x) => x === "-").length;
-  const ok = names[0] === "tap4" && names.at(-1) === "tap4" && plus >= 3 && plus <= 5 && minus >= 5 && minus <= 9 && !d.mode;
+  const ok = names.filter((n) => n.startsWith("tap")).join() === "tap2,tap2" && names[0] === "tap2" && names.at(-1) === "tap2"
+    && plus >= 3 && plus <= 5 && minus >= 5 && minus <= 9 && !d.mode
+    && runs.filter((r) => r.countReached >= 2).map((r) => `${r.gesture}/${r.countReached}/${r.outcome}`).join()
+      === "tap2/2/completed,tap2/4/timeout,tap2/2/completed"
+    && candidates.slice(2).every((r) => r.gesture === "tap2" && r.sequenceId > runs[0].sequenceId);
   pass += ok; console.log(`${ok ? "ok  " : "FAIL"} club mode: ${plus} slow + steps (want 3-5), ${minus} fast - steps (want 5-9), ends off: ${!d.mode}  ${names.join(" ")}`);
   // a wrist resting near the edge (wobbling 15-24 deg) must not flick the club back and forth
   {
-    const ev3 = []; const d3 = new GestureDetector((x) => { ev3.push(x.name === "clubstep" ? (x.dir > 0 ? "+" : "-") : x.name); if (x.name === "tap4") d3.startClubMode(x.t); }, { dialAxis: [1, 0, 0] });
+    const ev3 = []; const d3 = new GestureDetector((x) => { ev3.push(x.name === "clubstep" ? (x.dir > 0 ? "+" : "-") : x.name); if (x.name === "tap2") d3.startClubMode(x.t); }, { dialAxis: [1, 0, 0] });
     const wob = [3.0, (tau) => [[0, 0, 1], [60 * Math.cos(2 * Math.PI * 0.8 * tau), 0, 0], [0, 0, 0]]];   // +-12 deg around ~20
-    for (const f of seq([still(), taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.2), turn(0, 20), holdAt(20, 0.3), wob, holdAt(20, 1)])) d3.frame(f);
+    for (const f of seq([still(), taps([0.1, 0.3]), holdAt(0, 1.2), turn(0, 20), holdAt(20, 0.3), wob, holdAt(20, 1)])) d3.frame(f);
     const steps = ev3.filter((x) => x === "+" || x === "-");
     const flips = steps.filter((x, i) => i && x !== steps[i - 1]).length;
     const ok3 = flips === 0; pass += ok3;
     console.log(`${ok3 ? "ok  " : "FAIL"} no flicking at the edge: ${steps.join("") || "(none)"}`);
   }
   // a swing inside the mode ends it
-  const ev2 = []; const d2 = new GestureDetector((x) => { ev2.push(x.name); if (x.name === "tap4") d2.startClubMode(x.t); }, { dialAxis: [1, 0, 0] });
-  for (const f of seq([still(), taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.2), [0.3, () => [[0, 0, 1], [1500, 0, 0], [0, 0, 0]]], holdAt(0, 1)])) d2.frame(f);
-  const ok2 = ev2.includes("clubmode") && !d2.mode; pass += ok2;
-  console.log(`${ok2 ? "ok  " : "FAIL"} swing ends club mode: ${JSON.stringify(ev2)}`);
+  const ev2 = [], afterSwing = [];
+  const d2 = new GestureDetector((x) => { ev2.push(x.name); if (x.name === "tap2") d2.startClubMode(x.t); },
+    { dialAxis: [1, 0, 0], onTapCandidate: (_, row) => { if (row.rejectReason === "after_swing_holdoff") afterSwing.push(row); } });
+  for (const f of seq([still(), taps([0.1, 0.3]), holdAt(0, 1.2), [0.3, () => [[0, 0, 1], [1500, 0, 0], [0, 0, 0]]],
+    taps([0.1, 0.3, 0.5, 0.7]), holdAt(0, 1.5)])) d2.frame(f);
+  const ok2 = ev2.includes("clubmode") && !ev2.includes("tap4") && !d2.mode && afterSwing.length >= 4; pass += ok2;
+  console.log(`${ok2 ? "ok  " : "FAIL"} swing ends club mode and locks taps: ${JSON.stringify(ev2)}`);
 }
 
 // simulated swings (hand IMU only, like the spare XIAO; then with the arm IMU)
