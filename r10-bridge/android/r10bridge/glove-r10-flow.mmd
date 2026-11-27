@@ -1,0 +1,40 @@
+---
+config:
+  look: handDrawn
+  theme: base
+  themeVariables:
+    lineColor: "#495057"
+    edgeLabelBackground: "#ffffff"
+    clusterBkg: "#fffdf5"
+    clusterBorder: "#868e96"
+---
+flowchart LR
+  R10["🎯 Garmin R10<br/>공 뒤 2 m<br/>결과: 볼 스피드·방향·스핀"]
+  G["🧤 센서 장갑<br/>자이로·가속도·마이크<br/>원인: 손목·임팩트"]
+  subgraph P["📱 폰 한 대 (S25)"]
+    GA["Garmin Golf 앱"]
+    RB["R10 Bridge 앱<br/>(이번에 만든 것)"]
+    CAM["📷 뒤 카메라<br/>MediaPipe 포즈"]
+    PG["장갑 페이지 (Chrome)<br/>스윙마다 한 줄로 묶기"]
+  end
+  LOG[("스윙 기록<br/>장갑 + 포즈 + R10 결과")]
+  PC["🖥️ 집 PC<br/>초기 모델 학습"]
+  VO["🔊 음성 코칭<br/>샷 직후"]
+
+  R10 -- "블루투스" --> GA
+  GA -- "E6 연동<br/>127.0.0.1 : 2483" --> RB
+  RB -- "WebSocket<br/>127.0.0.1 : 8765" --> PG
+  G -- "Web Bluetooth" --> PG
+  CAM --> PG
+  PG --> LOG
+  PG --> VO
+  LOG -- "세션 끝나고 복사" --> PC
+
+  classDef dev fill:#ffec99,stroke:#f08c00,stroke-width:2px,color:#1c1c1c
+  classDef app fill:#a5d8ff,stroke:#1971c2,stroke-width:2px,color:#1c1c1c
+  classDef new fill:#ffc9c9,stroke:#e03131,stroke-width:2px,color:#1c1c1c
+  classDef out fill:#b2f2bb,stroke:#2f9e44,stroke-width:2px,color:#1c1c1c
+  class R10,G dev
+  class GA,CAM,PG app
+  class RB new
+  class LOG,PC,VO out

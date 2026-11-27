@@ -1,0 +1,38 @@
+--- a/src/utility/HCI.h
++++ b/src/utility/HCI.h
+@@ -140,2 +140,8 @@
+ 
++  // local patch 2026-10-27 (glove): visibility into ACL transmit credits
++#define ARDUINOBLE_CREDIT_PATCH 1
++  uint8_t pendingPkt() const { return _pendingPkt; }
++  uint8_t maxPkt() const { return _maxPkt; }
++  uint16_t creditReleases = 0;   // credits given back after 100 ms with no Number-of-Completed-Packets event
++
+ private:
+--- a/src/utility/HCI.cpp
++++ b/src/utility/HCI.cpp
+@@ -637,4 +637,9 @@
+ {
++  // local patch 2026-10-27: a lost Number-of-Completed-Packets event (e.g. dropped by a full HCI rx buffer) used to
++  // leak that credit for good: fewer packets in flight (the glove's stream fell from 30 to ~20 notifications/s until a
++  // reboot), and with all credits gone this loop would wait forever. After 100 ms with no credit back, release one.
++  unsigned long waitStart = millis();
+   while (_pendingPkt >= _maxPkt) {
+     poll();
++    if (_pendingPkt >= _maxPkt && millis() - waitStart > 100) { _pendingPkt--; creditReleases++; waitStart = millis(); }
+   }
+@@ -880,2 +885,3 @@
+ 
++  if (eventHdr->evt == EVT_DISCONN_COMPLETE) _pendingPkt = 0;   // local patch: the controller flushed them
+   if (eventHdr->evt == EVT_DISCONN_COMPLETE)
+--- a/src/utility/HCICordioTransport.cpp
++++ b/src/utility/HCICordioTransport.cpp
+@@ -310,2 +310,4 @@
+ 
++volatile uint32_t ble_rx_drops = 0;   // local patch 2026-10-27
++
+ void HCICordioTransportClass::handleRxData(uint8_t* data, uint8_t len)
+@@ -318,2 +320,3 @@
+       // drop!
++      ble_rx_drops++;   // local patch 2026-10-27: count them (a dropped event can leak a transmit credit)
+       return;

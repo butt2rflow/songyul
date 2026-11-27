@@ -1,0 +1,5 @@
+--- a/src/utility/HCICordioTransport.h
++++ b/src/utility/HCICordioTransport.h
+@@ -54 +54 @@
+-  RingBufferN<256> _rxBuf;
++  RingBufferN<2048> _rxBuf;  // was 256: one 244-byte notification (10 x 32-byte ACL fragments) never fit, so it was dropped (glove patch 2026-10-22)

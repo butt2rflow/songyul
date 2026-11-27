@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="532" viewBox="0 0 920 532" role="img" aria-labelledby="title desc">
+  <title id="title">Songyul BLE glove wiring</title>
+  <desc id="desc">XIAO D4 to LSM6DSOX SDA, D5 to SCL, D10 to VIN and GND to GND. The wake button shorts D2 to GND. LiPo leads go to the matching battery pads. Connector contact order and battery plug orientation are unverified.</desc>
+  <style>
+    text { font: 16px system-ui, sans-serif; fill: #16312d; }
+    .title { font-size: 28px; font-weight: 750; }
+    .heading { font-size: 20px; font-weight: 720; }
+    .pin { font-size: 15px; font-weight: 650; }
+    .detail { font-size: 14px; }
+    .note { font-size: 14px; fill: #554825; }
+    .board { fill: #fafffe; stroke: #50857a; stroke-width: 1.5; }
+    .sub { fill: #eef6f3; stroke: #a9c6bd; }
+    .wire { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .sda { stroke: #205d9b; } .scl { stroke: #8a5b0e; } .supply { stroke: #ad3730; }
+    .ground { stroke: #263a38; } .wake { stroke: #6b4490; }
+  </style>
+  <rect width="920" height="532" rx="18" fill="#e6f1ee"/>
+  <text class="title" x="36" y="54">Songyul BLE glove wiring</text>
+
+  <rect class="board" x="36" y="83" width="388" height="355" rx="14"/>
+  <text class="heading" x="56" y="116">XIAO nRF52840 Sense</text>
+  <rect class="sub" x="56" y="136" width="194" height="103" rx="8"/>
+  <text class="pin" x="68" y="159">Onboard LSM6DS3TR-C</text>
+  <text class="detail" x="68" y="181">Wire1 · address 0x6A</text>
+  <text class="detail" x="68" y="202">SDA P0.07 · SCL P0.27</text>
+  <text class="detail" x="68" y="223">Power 15 · P1.08</text>
+  <rect class="sub" x="56" y="253" width="194" height="80" rx="8"/>
+  <text class="pin" x="68" y="276">Onboard PDM mic</text>
+  <text class="detail" x="68" y="298">PWR 19 · CLK 20 · DIN 21</text>
+  <text class="detail" x="68" y="318">Mono · 16 kHz</text>
+  <text class="pin" text-anchor="end" x="410" y="161">D4 · P0.04</text>
+  <text class="pin" text-anchor="end" x="410" y="189">D5 · P0.05</text>
+  <text class="pin" text-anchor="end" x="410" y="217">D10 · P1.15</text>
+  <text class="pin" text-anchor="end" x="410" y="245">GND</text>
+  <text class="pin" text-anchor="end" x="410" y="292">D2 · P0.28</text>
+  <text class="pin" text-anchor="end" x="410" y="320">GND</text>
+  <text class="pin" text-anchor="end" x="410" y="377">BAT+</text>
+  <text class="pin" text-anchor="end" x="410" y="405">BAT−</text>
+  <text class="detail" x="56" y="405">Battery pads on back</text>
+
+  <rect class="board" x="618" y="83" width="266" height="171" rx="14"/>
+  <text class="heading" x="637" y="116">External LSM6DSOX</text>
+  <text class="detail" x="637" y="137">Adafruit 4438 · Wire · 0x6A</text>
+  <text class="pin" x="637" y="161">SDA</text>
+  <text class="pin" x="637" y="189">SCL</text>
+  <text class="pin" x="637" y="217">VIN</text>
+  <text class="pin" x="637" y="245">GND</text>
+  <path class="wire sda" d="M424 156H618"/>
+  <path class="wire scl" d="M424 184H618"/>
+  <path class="wire supply" d="M424 212H618"/>
+  <path class="wire ground" d="M424 240H618"/>
+  <text class="detail" text-anchor="middle" x="521" y="204">Switched power</text>
+
+  <rect class="board" x="618" y="266" width="266" height="67" rx="14"/>
+  <text class="heading" x="678" y="290">Wake button</text>
+  <text class="detail" x="678" y="312">Normally open</text>
+  <path class="wire wake" d="M424 287H641V291"/>
+  <path class="wire ground" d="M424 315H641V308"/>
+  <circle cx="641" cy="291" r="2.7" fill="#6b4490"/>
+  <circle cx="641" cy="308" r="2.7" fill="#263a38"/>
+  <path class="wire wake" d="M641 291l10 16"/>
+
+  <rect class="board" x="618" y="346" width="266" height="92" rx="14"/>
+  <text class="heading" x="675" y="376">1-cell LiPo</text>
+  <text class="detail" x="675" y="404">3.7 V nominal</text>
+  <text class="pin" x="637" y="377">+</text>
+  <text class="pin" x="637" y="405">−</text>
+  <path class="wire supply" d="M424 372H618"/>
+  <path class="wire ground" d="M424 400H618"/>
+
+  <rect x="36" y="457" width="848" height="49" rx="9" fill="#fff5d9"/>
+  <text class="note" x="53" y="478">Unverified: cable connector contact order and battery plug orientation. Check the physical pinout and polarity.</text>
+  <text class="note" x="53" y="496">USB bench sketch: use XIAO 3V3 for breakout VIN. That sketch leaves D10 undriven.</text>
+</svg>
