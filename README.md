@@ -74,6 +74,9 @@ The glove is the data collector. Next: label real swings with launch-monitor res
 
 ![Range setup from above: phone on a floor-level mini tripod in front of the golfer, Garmin R10 about 2 m behind the ball](docs/images/setup-topview.png)
 
+![Range setup as a short clip: a 3D model flies from the R10 behind the ball to the phone on its floor tripod, then cuts to a face-on 7-iron swing](docs/images/setup-video.gif)  
+*The 3D part is a Blender previs of the real layout; the swing is AI-generated video and the golfer is not a real person. [MP4](docs/images/setup-video.mp4)*
+
 ## Quick start
 
 1. **Gather the parts.** Use a Seeed Studio XIAO nRF52840 Sense, an Adafruit LSM6DSOX STEMMA QT breakout (4438), a four-wire STEMMA QT cable, a protected 3.7 V single-cell LiPo (prototype used 350 mAh), an optional normally open 6 × 6 mm button, and a sleeve or strap. For the current detector, mount the XIAO on the hand and the breakout on the forearm. See the [wiring diagram notes](docs/README.md) and [v3 case fit notes](cad/README.md).
